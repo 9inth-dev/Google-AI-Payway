@@ -315,10 +315,16 @@ export const QrSimulatorModal: React.FC<QrSimulatorModalProps> = ({
 
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden border border-gray-100 my-8">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-gray-900/60 backdrop-blur-xs transition-opacity duration-300"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-xl h-full shadow-2xl flex flex-col border-l border-gray-200 overflow-hidden transform transition-transform duration-300 ease-out"
+        onClick={e => e.stopPropagation()}
+      >
         {/* MODAL HEADER */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/80 shrink-0">
           <div>
             <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#00B4CC]" />
@@ -340,7 +346,7 @@ export const QrSimulatorModal: React.FC<QrSimulatorModalProps> = ({
         </div>
 
         {/* MODAL BODY */}
-        <div className="p-6 flex flex-col gap-5">
+        <div className="p-6 flex-1 overflow-y-auto flex flex-col gap-5">
           {/* SIMULATION MODE TOGGLE */}
           <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-xl text-xs font-semibold">
             <button
@@ -494,7 +500,7 @@ export const QrSimulatorModal: React.FC<QrSimulatorModalProps> = ({
         </div>
 
         {/* MODAL FOOTER */}
-        <div className="px-6 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
           <span className="text-[11px] text-gray-500">
             {simulationCompleted ? '✓ Sandbox requirements updated' : 'Run simulations to verify requirements'}
           </span>

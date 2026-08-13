@@ -100,9 +100,9 @@ export const ProvisionalProductionDashboard: React.FC<ProvisionalProductionDashb
     }
   };
 
-  const isFull = state.productionAccessStatus === 'full_production';
-  const isExpired = state.productionAccessStatus === 'provisional_expired';
-  const isLimitReached = state.productionAccessStatus === 'provisional_limit_reached';
+  const isFull = state.productionAccessStatus === 'full_production' || state.reviewStatus === 'approved';
+  const isExpired = !isFull && state.productionAccessStatus === 'provisional_expired';
+  const isLimitReached = !isFull && state.productionAccessStatus === 'provisional_limit_reached';
   const isBlocked = isExpired || isLimitReached;
 
   // Simulate payment
@@ -190,7 +190,7 @@ export const ProvisionalProductionDashboard: React.FC<ProvisionalProductionDashb
 
             <span className="text-xs font-medium flex items-center gap-1.5 text-slate-300">
               <span className={`w-2 h-2 rounded-full ${isBlocked ? 'bg-rose-500' : 'bg-emerald-400 animate-pulse'}`} />
-              Key Status: {isBlocked ? 'Blocked (Pending Approval)' : 'Active'}
+              Key Status: {isBlocked ? 'Blocked (Pending Approval)' : isFull ? 'Active (Full Access)' : 'Active (Provisional)'}
             </span>
           </div>
 
@@ -311,64 +311,96 @@ export const ProvisionalProductionDashboard: React.FC<ProvisionalProductionDashb
       {/* ATTENTION CARD (When PayWay requests changes & key is active) */}
       {!isBlocked && <AttentionCard />}
 
-      {/* FOUR IMPORTANT PIECES OF INFORMATION (GRID) */}
-      <div id="review-status-details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. Days Remaining */}
-        <div className="bg-white rounded-xl border border-gray-200/80 p-5 shadow-2xs flex flex-col gap-1.5 hover:border-gray-300 transition-all">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Days remaining
-          </span>
-          <div className="text-2xl font-extrabold text-gray-900 tracking-tight">
-            {getDaysRemaining()}
-          </div>
-          <p className="text-[11px] text-gray-400">
-            {isFull ? 'Permanent key access' : isExpired ? 'Period ended' : `From ${PROVISIONAL_CONFIG.PROVISIONAL_PERIOD_DAYS}-day initial allocation`}
-          </p>
-        </div>
-
-        {/* 2. Transactions Used */}
-        <div className="bg-white rounded-xl border border-gray-200/80 p-5 shadow-2xs flex flex-col gap-1.5 hover:border-gray-300 transition-all">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Transactions used
-          </span>
-          <div className="text-2xl font-extrabold text-gray-900 tracking-tight">
-            {isFull ? 'Unlimited' : `${state.provisionalTransactionUsage} of ${PROVISIONAL_CONFIG.MAX_PROVISIONAL_TRANSACTIONS}`}
-          </div>
-          <p className="text-[11px] text-gray-400">
-            {isFull ? 'Unrestricted limit' : `${Math.max(0, PROVISIONAL_CONFIG.MAX_PROVISIONAL_TRANSACTIONS - state.provisionalTransactionUsage)} transactions remaining`}
-          </p>
-        </div>
-
-        {/* 3. Transaction Volume */}
-        <div className="bg-white rounded-xl border border-gray-200/80 p-5 shadow-2xs flex flex-col gap-1.5 hover:border-gray-300 transition-all">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Transaction volume
-          </span>
-          <div className="text-2xl font-extrabold text-gray-900 tracking-tight">
-            {isFull
-              ? 'Unlimited'
-              : `USD ${(state.provisionalVolumeUSD || 0).toLocaleString()} of USD ${PROVISIONAL_CONFIG.MAX_PROVISIONAL_VOLUME_USD.toLocaleString()}`}
-          </div>
-          <p className="text-[11px] text-gray-400">
-            {isFull ? 'Uncapped volume limit' : `USD ${Math.max(0, PROVISIONAL_CONFIG.MAX_PROVISIONAL_VOLUME_USD - (state.provisionalVolumeUSD || 0)).toLocaleString()} cap remaining`}
-          </p>
-        </div>
-
-        {/* 4. Review Status */}
-        <div className="bg-white rounded-xl border border-gray-200/80 p-5 shadow-2xs flex flex-col gap-1.5 hover:border-gray-300 transition-all justify-between">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Review status
-          </span>
-          <div>
-            <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getReviewStatusBadgeClass(state.reviewStatus)}`}>
-              {getReviewStatusLabel(state.reviewStatus)}
+      {/* SUMMARY GRID (Provisional limits when testing vs Approved clean status) */}
+      {!isFull ? (
+        <div id="review-status-details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 1. Days Remaining */}
+          <div className="bg-white rounded-xl border border-gray-200/80 p-5 shadow-2xs flex flex-col gap-1.5 hover:border-gray-300 transition-all">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Days remaining
             </span>
+            <div className="text-2xl font-extrabold text-gray-900 tracking-tight">
+              {getDaysRemaining()}
+            </div>
+            <p className="text-[11px] text-gray-400">
+              {isExpired ? 'Period ended' : `From ${PROVISIONAL_CONFIG.PROVISIONAL_PERIOD_DAYS}-day initial allocation`}
+            </p>
           </div>
-          <p className="text-[11px] text-gray-400">
-            PayWay Integration Manager
-          </p>
+
+          {/* 2. Transactions Used */}
+          <div className="bg-white rounded-xl border border-gray-200/80 p-5 shadow-2xs flex flex-col gap-1.5 hover:border-gray-300 transition-all">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Transactions used
+            </span>
+            <div className="text-2xl font-extrabold text-gray-900 tracking-tight">
+              {`${state.provisionalTransactionUsage} of ${PROVISIONAL_CONFIG.MAX_PROVISIONAL_TRANSACTIONS}`}
+            </div>
+            <p className="text-[11px] text-gray-400">
+              {`${Math.max(0, PROVISIONAL_CONFIG.MAX_PROVISIONAL_TRANSACTIONS - state.provisionalTransactionUsage)} transactions remaining`}
+            </p>
+          </div>
+
+          {/* 3. Transaction Volume */}
+          <div className="bg-white rounded-xl border border-gray-200/80 p-5 shadow-2xs flex flex-col gap-1.5 hover:border-gray-300 transition-all">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Transaction volume
+            </span>
+            <div className="text-2xl font-extrabold text-gray-900 tracking-tight">
+              USD {(state.provisionalVolumeUSD || 0).toLocaleString()} of USD {PROVISIONAL_CONFIG.MAX_PROVISIONAL_VOLUME_USD.toLocaleString()}
+            </div>
+            <p className="text-[11px] text-gray-400">
+              USD {Math.max(0, PROVISIONAL_CONFIG.MAX_PROVISIONAL_VOLUME_USD - (state.provisionalVolumeUSD || 0)).toLocaleString()} cap remaining
+            </p>
+          </div>
+
+          {/* 4. Review Status */}
+          <div className="bg-white rounded-xl border border-gray-200/80 p-5 shadow-2xs flex flex-col gap-1.5 hover:border-gray-300 transition-all justify-between">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Review status
+            </span>
+            <div>
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getReviewStatusBadgeClass(state.reviewStatus)}`}>
+                {getReviewStatusLabel(state.reviewStatus)}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              PayWay Integration Manager
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* APPROVED STATE - NO PROVISIONAL LIMIT CARDS DISPLAYED */
+        <div id="review-status-details" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-emerald-50/40 rounded-xl border border-emerald-200/90 p-5 shadow-2xs flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider">
+              Production Access Status
+            </span>
+            <div className="text-2xl font-extrabold text-emerald-950 tracking-tight flex items-center gap-2">
+              <span>Unlimited Access</span>
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase tracking-wider">
+                No Limits
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-700 font-medium">
+              All provisional transaction and volume limits have been removed upon approval.
+            </p>
+          </div>
+
+          <div className="bg-emerald-50/40 rounded-xl border border-emerald-200/90 p-5 shadow-2xs flex flex-col gap-1.5 justify-between">
+            <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider">
+              Merchant Application
+            </span>
+            <div>
+              <span className="inline-block px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-2xs">
+                ✓ Application Approved
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-700 font-medium">
+              Verified by PayWay Integration Manager
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* PRODUCTION API KEY SECTION */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex flex-col gap-4">
@@ -416,12 +448,21 @@ export const ProvisionalProductionDashboard: React.FC<ProvisionalProductionDashb
         </div>
 
         {/* IMPORTANT KEY PERSISTENCE NOTE */}
-        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600 flex items-center gap-2">
-          <span className="text-cyan-600 font-bold">ℹ️</span>
-          <span className="font-medium">
-            <strong>This key will remain the same after approval.</strong> PayWay will not issue a replacement key upon approval; provisional restrictions will automatically be lifted from this exact key.
-          </span>
-        </div>
+        {isFull ? (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center gap-2">
+            <span className="text-emerald-600 font-bold text-sm">✓</span>
+            <span className="font-medium">
+              <strong>Production Key Unrestricted.</strong> Your live API key is active with no transaction or volume limits.
+            </span>
+          </div>
+        ) : (
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600 flex items-center gap-2">
+            <span className="text-cyan-600 font-bold">ℹ️</span>
+            <span className="font-medium">
+              <strong>This key will remain the same after approval.</strong> PayWay will not issue a replacement key upon approval; provisional restrictions will automatically be lifted from this exact key.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* PROTOTYPE DEMO SIMULATOR FOR INTEGRATION MANAGER REVIEW OUTCOMES */}

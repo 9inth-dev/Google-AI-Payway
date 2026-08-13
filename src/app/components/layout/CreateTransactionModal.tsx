@@ -44,12 +44,11 @@ export const CreateTransactionModal: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(13,61,79,0.6)', backdropFilter: 'blur(2px)' }}
+      className="fixed inset-0 z-50 flex justify-end bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300"
       onClick={handleClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
+        className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-slate-200 overflow-y-auto transform transition-transform duration-300 ease-out"
         onClick={e => e.stopPropagation()}
       >
         <div

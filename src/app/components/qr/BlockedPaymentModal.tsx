@@ -34,8 +34,14 @@ export const BlockedPaymentModal: React.FC<BlockedPaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl border border-rose-200 max-w-md w-full overflow-hidden flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white h-full shadow-2xl border-l border-rose-200 max-w-md w-full overflow-hidden flex flex-col transform transition-transform duration-300 ease-out"
+        onClick={e => e.stopPropagation()}
+      >
         {/* HEADER */}
         <div className="bg-gradient-to-r from-rose-950 via-red-900 to-slate-900 text-white p-6 relative">
           <button

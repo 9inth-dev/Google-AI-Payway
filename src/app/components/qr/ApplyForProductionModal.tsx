@@ -119,11 +119,17 @@ export const ApplyForProductionModal: React.FC<ApplyForProductionModalProps> = (
   const currentOutletName = isCustomBusiness ? customOutletName || 'Main Outlet' : selectedOutlet;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100 my-8 animate-in fade-in zoom-in-95 duration-200">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-gray-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+      onClick={resetAndClose}
+    >
+      <div
+        className="bg-white h-full w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden border-l border-gray-200 animate-in slide-in-from-right duration-300"
+        onClick={e => e.stopPropagation()}
+      >
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 p-6 text-white relative">
+        <div className="bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 p-6 text-white relative shrink-0">
           <button
             onClick={resetAndClose}
             className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1.5 transition-colors cursor-pointer"
@@ -178,7 +184,7 @@ export const ApplyForProductionModal: React.FC<ApplyForProductionModalProps> = (
         </div>
 
         {/* Modal Content Body */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
 
           {/* ==================== STEP 1: SUBMITTER ==================== */}
           {step === 1 && (
@@ -907,9 +913,22 @@ export const ApplyForProductionModal: React.FC<ApplyForProductionModalProps> = (
                   <span className="font-semibold text-emerald-600">✓ Complete (5/5 verified)</span>
                 </div>
 
-                <div className="flex justify-between border-b border-gray-200/80 pb-2">
-                  <span className="text-gray-500 font-medium">UI evidence:</span>
-                  <span className="font-semibold text-emerald-600">✓ Complete</span>
+                <div className="flex flex-col gap-1.5 border-b border-gray-200/80 pb-2.5">
+                  <span className="text-gray-500 font-medium">UI Evidence:</span>
+                  <div className="pl-2 flex flex-col gap-1 text-[11px]">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Payment flow screen recording:</span>
+                      <span className="font-semibold text-emerald-600">
+                        {state.uiEvidence?.recordingAttached ? 'Attached' : 'Missing'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">QR payment UI screenshot:</span>
+                      <span className="font-semibold text-emerald-600">
+                        {state.uiEvidence?.screenshotAttached ? 'Attached' : 'Missing'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex justify-between border-b border-gray-200/80 pb-2">

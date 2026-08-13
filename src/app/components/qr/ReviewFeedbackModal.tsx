@@ -63,10 +63,10 @@ export const ReviewFeedbackModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white h-full max-w-2xl w-full shadow-2xl border-l border-gray-200 overflow-hidden flex flex-col animate-in slide-in-from-right duration-300">
         {/* MODAL HEADER */}
-        <div className="bg-gradient-to-r from-gray-900 via-slate-800 to-amber-950 text-white p-6 relative">
+        <div className="bg-gradient-to-r from-gray-900 via-slate-800 to-amber-950 text-white p-6 relative shrink-0">
           <button
             onClick={() => setShowFeedbackModal(false)}
             className="absolute top-5 right-5 text-gray-400 hover:text-white text-xl font-bold w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-colors cursor-pointer"

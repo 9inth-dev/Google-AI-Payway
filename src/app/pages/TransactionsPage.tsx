@@ -3,7 +3,7 @@ import { useSandbox } from '../context/SandboxContext';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/common/Card';
-import { Modal } from '../components/common/Modal';
+import { TransactionDetailSideModal } from '../components/transactions/TransactionDetailSideModal';
 import { EmptyState } from '../components/common/EmptyState';
 import { Transaction } from '../types/sandbox';
 
@@ -164,58 +164,12 @@ export const TransactionsPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Transaction Detail Modal */}
-      {selectedTx && (
-        <Modal
-          isOpen={!!selectedTx}
-          onClose={() => setSelectedTx(null)}
-          title={`Transaction: ${selectedTx.tranId}`}
-          subtitle="Sandbox API payload details"
-        >
-          <div className="flex flex-col gap-3 text-xs">
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-400 font-medium">Status</span>
-              <StatusBadge status={selectedTx.status} size="sm" />
-            </div>
-
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-400 font-medium">Amount</span>
-              <span className="font-bold text-gray-800">
-                {selectedTx.currency} {selectedTx.amount.toFixed(2)}
-              </span>
-            </div>
-
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-400 font-medium">Payment Type</span>
-              <span className="font-semibold text-gray-700">{selectedTx.paymentType}</span>
-            </div>
-
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-400 font-medium">Payer Name</span>
-              <span className="text-gray-700">{selectedTx.payerName || 'N/A'}</span>
-            </div>
-
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-400 font-medium">Description</span>
-              <span className="text-gray-700">{selectedTx.description}</span>
-            </div>
-
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-400 font-medium">Timestamp</span>
-              <span className="text-gray-600 font-mono text-[11px]">{selectedTx.createdAt}</span>
-            </div>
-
-            <div className="flex flex-col gap-1 mt-2">
-              <span className="text-[11px] font-semibold text-gray-400 uppercase">
-                Generated Payload Hash Signature
-              </span>
-              <div className="p-2.5 bg-gray-900 text-cyan-400 font-mono text-[10px] rounded-lg break-all">
-                {selectedTx.hash || 'e89f812a1b2c3d4e5f67890123456789'}
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Transaction Detail Side Drawer Modal */}
+      <TransactionDetailSideModal
+        isOpen={!!selectedTx}
+        onClose={() => setSelectedTx(null)}
+        tx={selectedTx}
+      />
     </div>
   );
 };

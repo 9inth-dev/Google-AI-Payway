@@ -4,12 +4,15 @@ import { PageHeader } from '../components/common/PageHeader';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/common/Card';
 import { CredentialCard } from '../components/common/CredentialCard';
-import { getVerifiedRequirementsCount } from '../utils/readiness';
+import { getVerifiedRequirementsCount, isTechnicalTestingComplete, isUiEvidenceComplete, isReadyForProduction } from '../utils/readiness';
 import { RequirementCard } from '../components/qr/RequirementCard';
 import { QrSimulatorModal } from '../components/qr/QrSimulatorModal';
 import { ApplyForProductionModal } from '../components/qr/ApplyForProductionModal';
 import { ProvisionalProductionDashboard } from '../components/qr/ProvisionalProductionDashboard';
 import { AttentionCard } from '../components/qr/AttentionCard';
+import { UiEvidenceSection } from '../components/qr/UiEvidenceSection';
+import { TransactionDetailSideModal } from '../components/transactions/TransactionDetailSideModal';
+import { Transaction } from '../types/sandbox';
 
 export const QrApiPage: React.FC = () => {
   const {
@@ -28,6 +31,7 @@ export const QrApiPage: React.FC = () => {
   const [showSimulator, setShowSimulator] = useState(false);
   const [simulatorMode, setSimulatorMode] = useState<'sample_payment' | 'test_expired'>('sample_payment');
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [selectedCodeLang, setSelectedCodeLang] = useState<
     'node' | 'php' | 'python' | 'web' | 'ios' | 'android' | 'node_refund' | 'php_refund' | 'python_refund' | 'curl'
   >('node');
@@ -449,18 +453,6 @@ print("Refund Response:", response.json())`;
         </button>
 
         <button
-          onClick={() => setRoute('/integrations/qr-api/activity')}
-          className={`pb-3 transition-colors relative cursor-pointer ${
-            activeTab === 'activity' ? 'text-[#00B4CC] font-bold' : 'hover:text-gray-800'
-          }`}
-        >
-          API Activity ({transactions.length})
-          {activeTab === 'activity' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00B4CC] rounded-full" />
-          )}
-        </button>
-
-        <button
           onClick={() => setRoute('/integrations/qr-api/production')}
           className={`pb-3 transition-colors relative cursor-pointer ${
             activeTab === 'production' ? 'text-[#00B4CC] font-bold' : 'hover:text-gray-800'
@@ -468,6 +460,18 @@ print("Refund Response:", response.json())`;
         >
           Production Access
           {activeTab === 'production' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00B4CC] rounded-full" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setRoute('/integrations/qr-api/activity')}
+          className={`pb-3 transition-colors relative cursor-pointer ${
+            activeTab === 'activity' ? 'text-[#00B4CC] font-bold' : 'hover:text-gray-800'
+          }`}
+        >
+          API Activity ({transactions.length})
+          {activeTab === 'activity' && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00B4CC] rounded-full" />
           )}
         </button>
@@ -480,33 +484,45 @@ print("Refund Response:", response.json())`;
       {activeTab === 'overview' && (
         <div className="flex flex-col gap-6">
           {/* SECTION: PRODUCTION READINESS */}
-          <div>
-            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">
-              Production Readiness
-            </div>
-            <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0 font-bold text-xs">
-                  {verifiedCount}/5
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-gray-800">
-                    {verifiedCount} of 5 requirements verified
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 max-w-xl leading-relaxed">
-                    Build and test normally. PayWay will automatically verify supported requirements from your sandbox activity.
-                  </p>
-                </div>
+          {state.productionAccessStatus === 'sandbox' && state.reviewStatus !== 'approved' && (
+            <div>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                Production Readiness
               </div>
+              <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs border ${
+                    verifiedCount === 5 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {verifiedCount}/5
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-gray-800">
+                      {verifiedCount === 5 
+                        ? 'All 5 requirements verified!' 
+                        : `${verifiedCount} of 5 requirements verified`}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 max-w-xl leading-relaxed">
+                      {verifiedCount === 5
+                        ? 'You have tested everything and all requirements look good! You can now request production access.'
+                        : 'Build and test normally. PayWay will automatically verify supported requirements from your sandbox activity.'}
+                    </p>
+                  </div>
+                </div>
 
-              <button
-                onClick={() => setRoute('/integrations/qr-api/testing')}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors shrink-0 cursor-pointer self-start sm:self-center"
-              >
-                View testing →
-              </button>
+                <button
+                  onClick={() => setRoute('/integrations/qr-api/production')}
+                  className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors shrink-0 cursor-pointer self-start sm:self-center ${
+                    verifiedCount === 5 
+                      ? 'bg-[#00B4CC] text-white hover:bg-[#009cb2]' 
+                      : 'bg-gray-900 text-white hover:bg-gray-800'
+                  }`}
+                >
+                  {verifiedCount === 5 ? 'Request production access →' : 'View testing →'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* SECTION: SANDBOX CREDENTIALS */}
           <div>
@@ -545,29 +561,6 @@ print("Refund Response:", response.json())`;
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                   </svg>
                   View API documentation
-                </button>
-                <button
-                  onClick={() => {
-                    const el = document.getElementById('sample-code-block');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
-                >
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <polyline points="16 18 22 12 16 6" />
-                    <polyline points="8 6 2 12 8 18" />
-                  </svg>
-                  View sample code
-                </button>
-                <button
-                  onClick={() => setShowCreateTxModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-50 text-[#00B4CC] border border-cyan-200 hover:bg-cyan-100 transition-colors cursor-pointer"
-                >
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <rect x="1" y="4" width="22" height="16" rx="2" />
-                    <line x1="1" y1="10" x2="23" y2="10" />
-                  </svg>
-                  Open Simulator
                 </button>
               </div>
 
@@ -674,11 +667,12 @@ print("Refund Response:", response.json())`;
                         <th className="py-2.5 px-4">Amount</th>
                         <th className="py-2.5 px-4">Status</th>
                         <th className="py-2.5 px-6">Timestamp</th>
+                        <th className="py-2.5 px-4 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {transactions.slice(0, 5).map(tx => (
-                        <tr key={tx.id} className="hover:bg-gray-50/50">
+                        <tr key={tx.id} className="hover:bg-gray-50/80 transition-colors cursor-pointer" onClick={() => setSelectedTx(tx)}>
                           <td className="py-3 px-6 font-mono font-medium text-gray-800">
                             {tx.tranId}
                           </td>
@@ -695,6 +689,19 @@ print("Refund Response:", response.json())`;
                           </td>
                           <td className="py-3 px-6 text-gray-400 text-[11px]">
                             {tx.createdAt}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTx(tx);
+                              }}
+                              className="text-xs font-semibold hover:underline"
+                              style={{ color: '#00B4CC' }}
+                            >
+                              Inspect API →
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -734,23 +741,36 @@ print("Refund Response:", response.json())`;
             <div>
               <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
                 Testing
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-50 text-[#00B4CC] border border-cyan-200">
-                  {verifiedCount} of 5 requirements verified
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                  verifiedCount === 5 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-cyan-50 text-[#00B4CC] border-cyan-200'
+                }`}>
+                  {verifiedCount === 5 ? '5 of 5 verified (Complete)' : `${verifiedCount} of 5 requirements verified`}
                 </span>
               </h2>
               <p className="text-xs text-gray-500 mt-1 max-w-2xl leading-relaxed">
-                Test your integration normally. PayWay automatically verifies supported requirements from your sandbox activity.
+                {verifiedCount === 5
+                  ? 'Great job! You have tested everything and all scenarios are verified. You can now request production access.'
+                  : 'Test your integration normally. PayWay automatically verifies supported requirements from your sandbox activity.'}
               </p>
             </div>
 
             <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
+              {verifiedCount === 5 && (
+                <button
+                  onClick={() => setRoute('/integrations/qr-api/production')}
+                  className="px-3.5 py-2 text-xs font-bold rounded-lg text-white bg-[#00B4CC] hover:bg-[#009cb2] transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <span>Request production access</span>
+                  <span>→</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setSimulatorMode('sample_payment');
                   setShowSimulator(true);
                 }}
-                className="px-3.5 py-2 text-xs font-semibold rounded-lg text-white shadow-2xs hover:opacity-95 transition-opacity cursor-pointer flex items-center gap-1.5"
-                style={{ backgroundColor: '#00B4CC' }}
+                className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <polygon points="5 3 19 12 5 21 5 3" />
@@ -890,279 +910,375 @@ print("Refund Response:", response.json())`;
       {/* TAB 4: PRODUCTION ACCESS */}
       {activeTab === 'production' && (
         <div className="flex flex-col gap-6 max-w-4xl">
-          {state.productionAccessStatus !== 'sandbox' ? (
+          {state.productionAccessStatus !== 'sandbox' || state.reviewStatus === 'approved' ? (
             <ProvisionalProductionDashboard onOpenResubmitModal={() => setShowApplyModal(true)} />
-          ) : verifiedCount < 5 ? (
-            /* STATE 1: NOT READY */
-            <Card>
-              <CardHeader className="border-b border-gray-100 pb-5">
-                <div className="flex items-start justify-between flex-wrap gap-4">
+          ) : (
+            /* STEP-BY-STEP PRODUCTION APPLICATION ONBOARDING FLOW */
+            <div className="flex flex-col gap-6">
+
+              {/* OVERALL PAGE HEADER & STEP PROGRESS TRACKER */}
+              <div className="bg-white rounded-xl border border-gray-200/90 p-6 shadow-2xs">
+                <div className="flex items-start justify-between flex-wrap gap-4 mb-5">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">
-                        Action Required
-                      </span>
+                    <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-[#00B4CC] font-bold text-[10px] uppercase tracking-wider mb-2">
+                      <span>Production Access Application</span>
                     </div>
-                    <CardTitle className="text-xl">Production access</CardTitle>
-                    <CardDescription className="text-xs text-gray-600 mt-1">
-                      Complete the required sandbox checks before accepting live payments.
-                    </CardDescription>
+                    <h2 className="text-xl font-bold text-gray-900">Request Production API Credentials</h2>
+                    <p className="text-xs text-gray-600 mt-1 max-w-xl leading-relaxed">
+                      Complete technical sandbox testing and upload checkout UI evidence to unlock live PayWay QR production access.
+                    </p>
                   </div>
 
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-xs font-bold text-gray-800 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${
+                      isReadyForProduction(state)
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
                       {verifiedCount} of 5 requirements verified
                     </span>
-                    <span className="text-[11px] text-gray-400">
-                      {5 - verifiedCount} remaining to unlock Production keys
-                    </span>
-                  </div>
-                </div>
-
-                {/* Progress bar */}
-                <div className="w-full bg-gray-100 h-2 rounded-full mt-4 overflow-hidden">
-                  <div
-                    className="bg-[#00B4CC] h-full transition-all duration-300 rounded-full"
-                    style={{ width: `${(verifiedCount / 5) * 100}%` }}
-                  />
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-6 flex flex-col gap-6">
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Readiness Summary
-                </div>
-
-                {/* GROUP 1: INTEGRATION BEHAVIOUR */}
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Integration behaviour
-                    </span>
                     <span className="text-[11px] text-gray-400 font-medium">
-                      {
-                        [
-                          ts.qrGenerated?.status === 'verified',
-                          ts.paymentCompleted?.status === 'verified',
-                          ts.webhookReceived?.status === 'verified',
-                          ts.statusConfirmed?.status === 'verified',
-                        ].filter(Boolean).length
-                      } / 4 verified
+                      {isReadyForProduction(state) ? '✓ Ready to apply' : '2-step verification required'}
                     </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* 1. QR generated successfully */}
-                    {ts.qrGenerated?.status === 'verified' ? (
-                      <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
-                          <span className="text-gray-600">QR generated successfully</span>
-                        </div>
-                        <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
-                          <span className="font-bold text-gray-900">QR generated successfully</span>
-                        </div>
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Incomplete</span>
-                      </div>
-                    )}
-
-                    {/* 2. Payment completed */}
-                    {ts.paymentCompleted?.status === 'verified' ? (
-                      <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
-                          <span className="text-gray-600">Payment completed</span>
-                        </div>
-                        <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
-                          <span className="font-bold text-gray-900">Payment completed</span>
-                        </div>
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Incomplete</span>
-                      </div>
-                    )}
-
-                    {/* 3. Webhook received */}
-                    {ts.webhookReceived?.status === 'verified' ? (
-                      <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
-                          <span className="text-gray-600">Webhook received</span>
-                        </div>
-                        <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
-                          <span className="font-bold text-gray-900">Webhook received</span>
-                        </div>
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Incomplete</span>
-                      </div>
-                    )}
-
-                    {/* 4. Final status confirmed */}
-                    {ts.statusConfirmed?.status === 'verified' ? (
-                      <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
-                          <span className="text-gray-600">Final status confirmed</span>
-                        </div>
-                        <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
-                          <span className="font-bold text-gray-900">Final status confirmed</span>
-                        </div>
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Incomplete</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                {/* GROUP 2: CUSTOMER EXPERIENCE */}
-                <div className="flex flex-col gap-3 pt-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Customer experience
-                    </span>
-                    <span className="text-[11px] text-gray-400 font-medium">
-                      {ts.customerPaymentStates?.status === 'verified' ? 1 : 0} / 1 verified
-                    </span>
+                {/* 3-STEP PROGRESS VISUAL TRACKER */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-gray-100">
+                  {/* Step 1 Indicator */}
+                  <div className={`p-3 rounded-lg border text-xs flex items-center justify-between ${
+                    isTechnicalTestingComplete(state)
+                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                      : 'bg-amber-50/50 border-amber-200 text-amber-900'
+                  }`}>
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                        isTechnicalTestingComplete(state) ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+                      }`}>
+                        {isTechnicalTestingComplete(state) ? '✓' : '1'}
+                      </span>
+                      <div>
+                        <span className="font-bold block text-[11px]">1. Technical Tests</span>
+                        <span className="text-[10px] text-gray-500">
+                          {isTechnicalTestingComplete(state) ? '4/4 Verified' : 'In progress'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    {ts.customerPaymentStates?.status === 'verified' ? (
-                      <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
-                          <span className="text-gray-600">Success and expired states verified</span>
-                        </div>
-                        <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
+                  {/* Step 2 Indicator */}
+                  <div className={`p-3 rounded-lg border text-xs flex items-center justify-between ${
+                    isUiEvidenceComplete(state)
+                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                      : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                        isUiEvidenceComplete(state) ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'
+                      }`}>
+                        {isUiEvidenceComplete(state) ? '✓' : '2'}
+                      </span>
+                      <div>
+                        <span className="font-bold block text-[11px]">2. UI Evidence</span>
+                        <span className="text-[10px] text-gray-500">
+                          {isUiEvidenceComplete(state) ? '2/2 Uploaded' : 'Uploads required'}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-between p-3.5 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
-                          <div>
-                            <span className="font-bold text-gray-900 block">Success and expired states verified</span>
-                            <span className="text-[11px] text-gray-500">
-                              Verify both successful payment state &amp; expired QR behavior with UI evidence.
-                            </span>
+                    </div>
+                  </div>
+
+                  {/* Step 3 Indicator */}
+                  <div className={`p-3 rounded-lg border text-xs flex items-center justify-between ${
+                    isReadyForProduction(state)
+                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                      : 'bg-gray-50 border-gray-200 text-gray-400'
+                  }`}>
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                        isReadyForProduction(state) ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        3
+                      </span>
+                      <div>
+                        <span className="font-bold block text-[11px]">3. Submit Request</span>
+                        <span className="text-[10px] text-gray-500">
+                          {isReadyForProduction(state) ? 'Unlocked!' : 'Locked'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* STEP 1: TECHNICAL INTEGRATION READINESS */}
+              <Card>
+                <CardHeader className="border-b border-gray-100 pb-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-[#00B4CC] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                        1
+                      </span>
+                      <div>
+                        <CardTitle className="text-base font-bold">Step 1: Technical Integration Requirements</CardTitle>
+                        <CardDescription className="text-xs text-gray-500 mt-0.5">
+                          Automatically verified through your sandbox API transaction activity.
+                        </CardDescription>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        isTechnicalTestingComplete(state)
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        {isTechnicalTestingComplete(state) ? '✓ VERIFIED' : 'IN PROGRESS'}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => setRoute('/integrations/qr-api/testing')}
+                        className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#00B4CC] hover:bg-[#009cb2] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <span>Go to test page</span>
+                        <span className="text-sm">→</span>
+                      </button>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-5 flex flex-col gap-5">
+                  {/* GROUP 1: INTEGRATION BEHAVIOUR */}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Integration behaviour
+                      </span>
+                      <span className="text-[11px] text-gray-400 font-medium">
+                        {
+                          [
+                            ts.qrGenerated?.status === 'verified',
+                            ts.paymentCompleted?.status === 'verified',
+                            ts.webhookReceived?.status === 'verified',
+                            ts.statusConfirmed?.status === 'verified',
+                          ].filter(Boolean).length
+                        } / 4 verified
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* 1. QR generated successfully */}
+                      {ts.qrGenerated?.status === 'verified' ? (
+                        <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
+                            <span className="text-gray-600">QR generated successfully</span>
                           </div>
+                          <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
                         </div>
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full shrink-0">Incomplete</span>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
+                            <span className="font-bold text-gray-900">QR generated successfully</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Incomplete</span>
+                        </div>
+                      )}
+
+                      {/* 2. Payment completed */}
+                      {ts.paymentCompleted?.status === 'verified' ? (
+                        <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
+                            <span className="text-gray-600">Payment completed</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
+                            <span className="font-bold text-gray-900">Payment completed</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Incomplete</span>
+                        </div>
+                      )}
+
+                      {/* 3. Webhook received */}
+                      {ts.webhookReceived?.status === 'verified' ? (
+                        <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
+                            <span className="text-gray-600">Webhook received</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
+                            <span className="font-bold text-gray-900">Webhook received</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Incomplete</span>
+                        </div>
+                      )}
+
+                      {/* 4. Final status confirmed */}
+                      {ts.statusConfirmed?.status === 'verified' ? (
+                        <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
+                            <span className="text-gray-600">Final status confirmed</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
+                            <span className="font-bold text-gray-900">Final status confirmed</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Incomplete</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* GROUP 2: CUSTOMER EXPERIENCE */}
+                  <div className="flex flex-col gap-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Customer experience
+                      </span>
+                      <span className="text-[11px] text-gray-400 font-medium">
+                        {ts.customerPaymentStates?.status === 'verified' ? 1 : 0} / 1 verified
+                      </span>
+                    </div>
+
+                    <div>
+                      {ts.customerPaymentStates?.status === 'verified' ? (
+                        <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[9px]">✓</span>
+                            <span className="text-gray-600">Success and expired states verified</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3.5 bg-amber-50/60 rounded-lg border border-amber-200 text-xs shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full border-2 border-amber-500 text-amber-600 flex items-center justify-center font-bold text-[9px]">!</span>
+                            <div>
+                              <span className="font-bold text-gray-900 block">Success and expired states verified</span>
+                              <span className="text-[11px] text-gray-500">
+                                Verify both successful payment state &amp; expired QR behavior with UI evidence.
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full shrink-0">Incomplete</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* BOTTOM ACTION BANNER */}
+                  <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70 p-3.5 rounded-lg border border-slate-200/60">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Run or verify sandbox transactions</span>
+                      <span className="text-[11px] text-slate-500">Perform test payment flows or simulate webhooks in the sandbox testing suite.</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setRoute('/integrations/qr-api/testing')}
+                      className="px-4 py-2 text-xs font-bold text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 shadow-2xs self-start sm:self-auto"
+                    >
+                      <span>Go to test page</span>
+                      <span className="text-sm">→</span>
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* STEP 2: UI EVIDENCE UPLOADS */}
+              <UiEvidenceSection stepNumber={2} />
+
+              {/* STEP 3: SUBMIT APPLICATION CARD */}
+              <Card className={isReadyForProduction(state) ? 'border-emerald-300 bg-emerald-50/40 shadow-sm' : 'border-gray-200 bg-gray-50/50'}>
+                <CardContent className="p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                    <div className="flex items-start gap-3.5">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-bold text-sm ${
+                        isReadyForProduction(state)
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {isReadyForProduction(state) ? '✓' : '3'}
                       </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* CONTEXTUAL CTA */}
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-3">
-                  <div className="text-xs text-gray-500">
-                    Need help testing? Run our step-by-step simulator in the Testing workspace.
-                  </div>
-                  <button
-                    onClick={() => setRoute('/integrations/qr-api/testing')}
-                    className="px-5 py-2.5 text-xs font-bold text-white rounded-lg shadow-xs transition-opacity hover:opacity-95 cursor-pointer flex items-center gap-2"
-                    style={{ backgroundColor: '#00B4CC' }}
-                  >
-                    <span>Complete remaining {5 - verifiedCount === 1 ? 'requirement' : 'requirements'}</span>
-                    <span>→</span>
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            /* STATE 2: READY */
-            <Card className="border-emerald-200/80 shadow-md">
-              <CardHeader className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white p-6 rounded-t-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white uppercase tracking-wider flex items-center gap-1">
-                    <span>✓</span> Ready For Live Deployment
-                  </span>
-                </div>
-                <CardTitle className="text-xl font-bold">
-                  Your QR API integration is ready for production
-                </CardTitle>
-                <CardDescription className="text-xs text-cyan-50 mt-1.5 leading-relaxed max-w-2xl">
-                  Your required sandbox checks are complete. You can now connect a business and request production access.
-                </CardDescription>
+                      <div>
+                        <h3 className="text-base font-bold text-gray-900">
+                          {isReadyForProduction(state)
+                            ? 'Step 3: Ready for Production Access!'
+                            : 'Step 3: Request Production Access'}
+                        </h3>
+                        <p className="text-xs text-gray-600 mt-1 max-w-lg leading-relaxed">
+                          {isReadyForProduction(state)
+                            ? 'All technical sandbox tests and UI evidence attachments are verified. Click below to submit your merchant application.'
+                            : !isTechnicalTestingComplete(state) && !isUiEvidenceComplete(state)
+                              ? 'Complete technical tests in Step 1 and attach required UI evidence in Step 2 above to unlock your request.'
+                              : !isTechnicalTestingComplete(state)
+                                ? 'Complete remaining technical tests in Step 1 above to unlock your request.'
+                                : 'Attach required screen recording and UI screenshot in Step 2 above to unlock your request.'}
+                        </p>
 
-                <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-xs font-semibold">
-                  <span>5 of 5 requirements verified</span>
-                  <span className="bg-white text-emerald-800 px-2.5 py-0.5 rounded-full text-[11px] font-bold">
-                    Sandbox Readiness: 100%
-                  </span>
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-6 flex flex-col gap-6">
-                {/* VERIFIED SUMMARY PROOF */}
-                <div className="flex flex-col gap-3">
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Verified Checklist Summary
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3.5 bg-emerald-50/50 border border-emerald-100 rounded-lg">
-                      <span className="font-bold text-gray-800 block mb-2">Integration behaviour</span>
-                      <ul className="flex flex-col gap-1.5 text-[11px] text-emerald-800 font-medium">
-                        <li className="flex items-center gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span> QR generated successfully
-                        </li>
-                        <li className="flex items-center gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span> Payment completed
-                        </li>
-                        <li className="flex items-center gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span> Webhook received
-                        </li>
-                        <li className="flex items-center gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span> Final status confirmed
-                        </li>
-                      </ul>
+                        {/* Pending requirements badges */}
+                        {!isReadyForProduction(state) && (
+                          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                            {!isTechnicalTestingComplete(state) && (
+                              <span className="text-[10px] font-semibold bg-amber-100/90 text-amber-800 px-2.5 py-0.5 rounded-md border border-amber-200">
+                                Pending: Step 1 Technical Tests
+                              </span>
+                            )}
+                            {!isUiEvidenceComplete(state) && (
+                              <span className="text-[10px] font-semibold bg-amber-100/90 text-amber-800 px-2.5 py-0.5 rounded-md border border-amber-200">
+                                Pending: Step 2 UI Evidence
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="p-3.5 bg-emerald-50/50 border border-emerald-100 rounded-lg">
-                      <span className="font-bold text-gray-800 block mb-2">Customer experience</span>
-                      <ul className="flex flex-col gap-1.5 text-[11px] text-emerald-800 font-medium">
-                        <li className="flex items-center gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span> Success and expired states verified
-                        </li>
-                      </ul>
+                    {/* ACTION BUTTON */}
+                    <div className="shrink-0">
+                      {isReadyForProduction(state) ? (
+                        <button
+                          onClick={() => setShowApplyModal(true)}
+                          className="px-6 py-3 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2"
+                        >
+                          <span>Apply for production access</span>
+                          <span className="text-sm">→</span>
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="px-5 py-3 text-xs font-bold text-gray-400 bg-gray-200/80 border border-gray-300 rounded-xl cursor-not-allowed flex items-center gap-2"
+                        >
+                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0110 0v4" />
+                          </svg>
+                          <span>Complete Steps 1 &amp; 2 above</span>
+                        </button>
+                      )}
                     </div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                {/* PRIMARY & SECONDARY ACTION */}
-                <div className="pt-4 border-t border-gray-100 flex items-center gap-3">
-                  <button
-                    onClick={() => setShowApplyModal(true)}
-                    className="px-6 py-2.5 text-xs font-bold text-white rounded-lg shadow-sm hover:opacity-95 transition-opacity cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 flex items-center gap-2"
-                  >
-                    <span>Apply for production access</span>
-                    <span>→</span>
-                  </button>
-
-                  <button
-                    onClick={() => setRoute('/integrations/qr-api/testing')}
-                    className="px-4 py-2.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
-                  >
-                    Review testing results
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
           )}
         </div>
       )}
@@ -1176,6 +1292,12 @@ print("Refund Response:", response.json())`;
       <ApplyForProductionModal
         isOpen={showApplyModal}
         onClose={() => setShowApplyModal(false)}
+      />
+
+      <TransactionDetailSideModal
+        isOpen={!!selectedTx}
+        onClose={() => setSelectedTx(null)}
+        tx={selectedTx}
       />
     </div>
   );

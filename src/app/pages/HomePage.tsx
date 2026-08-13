@@ -2,7 +2,7 @@ import React from 'react';
 import { useSandbox } from '../context/SandboxContext';
 import { CredentialCard } from '../components/common/CredentialCard';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { getVerifiedRequirementsCount } from '../utils/readiness';
+import { getVerifiedRequirementsCount, isTechnicalTestingComplete, isUiEvidenceComplete } from '../utils/readiness';
 import { PROVISIONAL_CONFIG } from '../config/provisionalConfig';
 import { ReviewStatus } from '../types/sandbox';
 import { AttentionCard } from '../components/qr/AttentionCard';
@@ -92,6 +92,56 @@ export const HomePage: React.FC = () => {
             Build and test PayWay integrations safely before accepting live payments.
           </p>
         </div>
+      </div>
+
+      {/* SECTION: DEVELOPER TOOLS */}
+      <div>
+        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+          Developer Tools
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {developerTools.map(tool => (
+            <button
+              key={tool.title}
+              onClick={tool.onClick}
+              className="bg-white rounded-lg border border-gray-100 shadow-sm p-4 text-left flex items-center gap-3.5 hover:shadow-md hover:border-cyan-100 transition-all cursor-pointer"
+            >
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: tool.bg }}
+              >
+                {tool.icon}
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-gray-800">{tool.title}</div>
+                <div className="text-[11px] text-gray-400 mt-0.5">{tool.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Navi Recommendation Banner */}
+      <div className="bg-gradient-to-r from-cyan-50/60 to-teal-50/60 border border-cyan-100/80 rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[#00B4CC] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
+            N
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-gray-800">
+              Not sure what you need? Ask Navi
+            </div>
+            <div className="text-[11px] text-gray-500 mt-0.5">
+              Navi recommends payment products based on your platform, stack, and business model.
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowAskNaviModal(true)}
+          className="text-xs font-semibold text-[#00B4CC] hover:underline shrink-0 text-left sm:text-right cursor-pointer"
+        >
+          Get Navi Recommendation →
+        </button>
       </div>
 
       {/* SECTION: YOUR SANDBOX CREDENTIALS */}
@@ -194,7 +244,7 @@ export const HomePage: React.FC = () => {
                   </span>
                 </div>
 
-                {state.productionAccessStatus !== 'sandbox' ? (
+                {state.productionAccessStatus !== 'sandbox' || state.reviewStatus === 'approved' ? (
                   <div className="grid grid-cols-2 gap-3 my-4 bg-gray-50/70 rounded-lg p-3 border border-gray-100 text-xs">
                     <div>
                       <span className="text-[10px] font-semibold text-gray-400 uppercase block">
@@ -210,7 +260,7 @@ export const HomePage: React.FC = () => {
                       <span className="text-[10px] font-semibold text-gray-400 uppercase block">
                         Review Status
                       </span>
-                      <span className="font-bold text-cyan-800 mt-0.5 block">
+                      <span className="font-bold text-emerald-700 mt-0.5 block">
                         {(() => {
                           switch (state.reviewStatus) {
                             case 'submitted': return 'Submitted';
@@ -218,9 +268,28 @@ export const HomePage: React.FC = () => {
                             case 'changes_requested': return 'Changes Requested';
                             case 'resubmitted': return 'Resubmitted';
                             case 'approved': return 'Approved';
-                            default: return 'Under Review';
+                            default: return 'Approved';
                           }
                         })()}
+                      </span>
+                    </div>
+                  </div>
+                ) : isTechnicalTestingComplete(state) && !isUiEvidenceComplete(state) ? (
+                  <div className="grid grid-cols-2 gap-3 my-4 bg-amber-50/60 border border-amber-200/80 rounded-lg p-3 text-xs">
+                    <div>
+                      <span className="text-[10px] font-semibold text-amber-800 uppercase block">
+                        Readiness Status
+                      </span>
+                      <span className="font-bold text-amber-900 mt-0.5 block">
+                        Almost ready
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-amber-800 uppercase block">
+                        Action Required
+                      </span>
+                      <span className="font-bold text-amber-900 mt-0.5 block">
+                        UI evidence required
                       </span>
                     </div>
                   </div>
@@ -251,16 +320,24 @@ export const HomePage: React.FC = () => {
               <div className="pt-2 flex items-center justify-between border-t border-gray-50">
                 <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  {state.productionAccessStatus !== 'sandbox' ? 'Live Processing Active' : 'Integration Active'}
+                  {state.productionAccessStatus !== 'sandbox'
+                    ? 'Live Processing Active'
+                    : isTechnicalTestingComplete(state) && !isUiEvidenceComplete(state)
+                    ? 'Testing Complete'
+                    : 'Integration Active'}
                 </span>
                 <button
-                  onClick={() => setRoute(state.productionAccessStatus !== 'sandbox' ? '/integrations/qr-api/production' : '/integrations/qr-api')}
+                  onClick={() => setRoute(state.productionAccessStatus !== 'sandbox' || isTechnicalTestingComplete(state) ? '/integrations/qr-api/production' : '/integrations/qr-api')}
                   className="px-4 py-2 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer"
                   style={{ backgroundColor: '#00B4CC' }}
                   onMouseEnter={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#0A9BB0')}
                   onMouseLeave={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#00B4CC')}
                 >
-                  {state.productionAccessStatus !== 'sandbox' ? 'View production access' : 'Open integration →'}
+                  {state.productionAccessStatus !== 'sandbox'
+                    ? 'View production access'
+                    : isTechnicalTestingComplete(state)
+                    ? 'Request production access →'
+                    : 'Open integration →'}
                 </button>
               </div>
             </div>
@@ -380,56 +457,6 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Navi Recommendation Banner */}
-      <div className="bg-gradient-to-r from-cyan-50/60 to-teal-50/60 border border-cyan-100/80 rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#00B4CC] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
-            N
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-gray-800">
-              Not sure what you need? Ask Navi
-            </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
-              Navi recommends payment products based on your platform, stack, and business model.
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowAskNaviModal(true)}
-          className="text-xs font-semibold text-[#00B4CC] hover:underline shrink-0 text-left sm:text-right cursor-pointer"
-        >
-          Get Navi Recommendation →
-        </button>
-      </div>
-
-      {/* SECTION: DEVELOPER TOOLS */}
-      <div>
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">
-          Developer Tools
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {developerTools.map(tool => (
-            <button
-              key={tool.title}
-              onClick={tool.onClick}
-              className="bg-white rounded-lg border border-gray-100 shadow-sm p-4 text-left flex items-center gap-3.5 hover:shadow-md hover:border-cyan-100 transition-all cursor-pointer"
-            >
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: tool.bg }}
-              >
-                {tool.icon}
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-gray-800">{tool.title}</div>
-                <div className="text-[11px] text-gray-400 mt-0.5">{tool.desc}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* SECTION: RECENT API ACTIVITY */}
       <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">

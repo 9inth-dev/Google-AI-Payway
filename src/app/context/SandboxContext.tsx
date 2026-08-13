@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { SandboxState, Transaction, ToastMessage, QrTestingState, RequirementStatus, EvidenceItem, ApiLog, ApiCategory } from '../types/sandbox';
+import { isReadyForProduction } from '../utils/readiness';
 
 const DEFAULT_TESTING_STATE: QrTestingState = {
   qrGenerated: { status: 'not_detected' },
@@ -20,6 +21,10 @@ const DEFAULT_SANDBOX_STATE: SandboxState = {
   qrIntegrationStatus: 'not_started',
   hasDismissedQrHelper: false,
   testingState: DEFAULT_TESTING_STATE,
+  uiEvidence: {
+    recordingAttached: false,
+    screenshotAttached: false,
+  },
   productionReadiness: {
     apiKeysVerified: false,
     webhookConfigured: false,
@@ -198,6 +203,10 @@ interface SandboxContextType {
   updateTestingState: (updates: Partial<QrTestingState>) => void;
   uploadEvidence: (type: 'success' | 'expired', file: EvidenceItem) => void;
   removeEvidence: (type: 'success' | 'expired') => void;
+  attachRecording: () => void;
+  removeRecording: () => void;
+  attachScreenshot: () => void;
+  removeScreenshot: () => void;
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt' | 'tranId'>) => Transaction;
   addApiLog: (log: Omit<ApiLog, 'id' | 'timestamp'> & { id?: string; timestamp?: string }) => ApiLog;
   createFailedSampleApiLog: () => ApiLog;
@@ -376,16 +385,28 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [currentRoute]);
 
-  const setRoute = (route: string) => {
+  const setRoute = useCallback((route: string) => {
     const cleanRoute = route.startsWith('/') ? route : `/${route}`;
     setCurrentRoute(cleanRoute);
-  };
+  }, []);
 
-  const updateState = (updates: Partial<SandboxState>) => {
+  const addToast = useCallback((title: string, message?: string, type: ToastMessage['type'] = 'info') => {
+    const id = `toast_${Date.now()}_${Math.random()}`;
+    setToasts(prev => [...prev, { id, title, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const updateState = useCallback((updates: Partial<SandboxState>) => {
     setState(prev => ({ ...prev, ...updates }));
-  };
+  }, []);
 
-  const updateTestingState = (updates: Partial<QrTestingState>) => {
+  const updateTestingState = useCallback((updates: Partial<QrTestingState>) => {
     setState(prev => {
       const currentTesting = prev.testingState || DEFAULT_TESTING_STATE;
       const newTesting: QrTestingState = {
@@ -415,9 +436,9 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
         testingState: newTesting,
       };
     });
-  };
+  }, []);
 
-  const uploadEvidence = (type: 'success' | 'expired', file: EvidenceItem) => {
+  const uploadEvidence = useCallback((type: 'success' | 'expired', file: EvidenceItem) => {
     setState(prev => {
       const currentTesting = prev.testingState || DEFAULT_TESTING_STATE;
       const cps = currentTesting.customerPaymentStates;
@@ -448,9 +469,9 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
       };
     });
     addToast('Evidence Uploaded', `Uploaded UI evidence screenshot for ${type === 'success' ? 'successful payment' : 'expired QR'}`, 'success');
-  };
+  }, [addToast]);
 
-  const removeEvidence = (type: 'success' | 'expired') => {
+  const removeEvidence = useCallback((type: 'success' | 'expired') => {
     setState(prev => {
       const currentTesting = prev.testingState || DEFAULT_TESTING_STATE;
       const cps = currentTesting.customerPaymentStates;
@@ -481,9 +502,61 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
       };
     });
     addToast('Evidence Removed', `Removed screenshot for ${type === 'success' ? 'successful payment' : 'expired QR'}`, 'info');
-  };
+  }, [addToast]);
 
-  const addTransaction = (newTx: Omit<Transaction, 'id' | 'createdAt' | 'tranId'>): Transaction => {
+  const attachRecording = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      uiEvidence: {
+        ...(prev.uiEvidence || { recordingAttached: false, screenshotAttached: false }),
+        recordingAttached: true,
+        recordingFileName: 'qr-payment-flow.mp4',
+        recordingFileSize: '12.4 MB',
+      },
+    }));
+    addToast('Screen Recording Attached', 'Attached qr-payment-flow.mp4', 'success');
+  }, [addToast]);
+
+  const removeRecording = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      uiEvidence: {
+        ...(prev.uiEvidence || { recordingAttached: false, screenshotAttached: false }),
+        recordingAttached: false,
+        recordingFileName: undefined,
+        recordingFileSize: undefined,
+      },
+    }));
+    addToast('Screen Recording Removed', 'Removed screen recording attachment', 'info');
+  }, [addToast]);
+
+  const attachScreenshot = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      uiEvidence: {
+        ...(prev.uiEvidence || { recordingAttached: false, screenshotAttached: false }),
+        screenshotAttached: true,
+        screenshotFileName: 'qr-payment-screen.png',
+        screenshotFileSize: '1.8 MB',
+      },
+    }));
+    addToast('UI Screenshot Attached', 'Attached qr-payment-screen.png', 'success');
+  }, [addToast]);
+
+  const removeScreenshot = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      uiEvidence: {
+        ...(prev.uiEvidence || { recordingAttached: false, screenshotAttached: false }),
+        screenshotAttached: false,
+        screenshotFileName: undefined,
+        screenshotFileSize: undefined,
+      },
+    }));
+    addToast('UI Screenshot Removed', 'Removed UI screenshot attachment', 'info');
+  }, [addToast]);
+
+  const addTransaction = useCallback((newTx: Omit<Transaction, 'id' | 'createdAt' | 'tranId'>): Transaction => {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const now = new Date();
     const dateStr = now.toISOString().replace('T', ' ').substring(0, 19);
@@ -498,35 +571,20 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     setTransactions(prev => [created, ...prev]);
 
-    // Update state stats
-    const count = state.productionReadiness.testTransactionsCount + 1;
-    const usage = state.provisionalTransactionUsage + 1;
-    
-    updateState({
+    setState(prev => ({
+      ...prev,
       productionReadiness: {
-        ...state.productionReadiness,
-        testTransactionsCount: count,
+        ...prev.productionReadiness,
+        testTransactionsCount: prev.productionReadiness.testTransactionsCount + 1,
       },
-      provisionalTransactionUsage: usage
-    });
+      provisionalTransactionUsage: prev.provisionalTransactionUsage + 1,
+    }));
 
     addToast('Transaction Created', `Successfully generated ${created.tranId}`, 'success');
     return created;
-  };
+  }, [addToast]);
 
-  const addToast = (title: string, message?: string, type: ToastMessage['type'] = 'info') => {
-    const id = `toast_${Date.now()}_${Math.random()}`;
-    setToasts(prev => [...prev, { id, title, message, type }]);
-    setTimeout(() => {
-      removeToast(id);
-    }, 4000);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
-
-  const resetToDefaults = () => {
+  const resetToDefaults = useCallback(() => {
     setState(DEFAULT_SANDBOX_STATE);
     setTransactions(INITIAL_TRANSACTIONS);
     setApiLogs(INITIAL_API_LOGS);
@@ -534,45 +592,82 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.removeItem('payway_sandbox_txs');
     localStorage.removeItem('payway_sandbox_apilogs');
     addToast('State Reset', 'Restored default demo sandbox settings', 'info');
-  };
+  }, [addToast]);
+
+  const contextValue = useMemo(() => ({
+    state,
+    transactions,
+    apiLogs,
+    toasts,
+    currentRoute,
+    showCreateTxModal,
+    showAskNaviModal,
+    askNaviInitialQuery,
+    welcomeModalOpen,
+    tourStep,
+    devSidebarOpen,
+    selectedActivityLogId,
+    showFeedbackModal,
+    showPrototypeModal,
+    setRoute,
+    updateState,
+    updateTestingState,
+    uploadEvidence,
+    removeEvidence,
+    attachRecording,
+    removeRecording,
+    attachScreenshot,
+    removeScreenshot,
+    addTransaction,
+    addApiLog,
+    createFailedSampleApiLog,
+    addToast,
+    removeToast,
+    setShowCreateTxModal,
+    setShowAskNaviModal,
+    setShowFeedbackModal,
+    setShowPrototypeModal,
+    openAskNaviWithQuery,
+    setWelcomeModalOpen,
+    setTourStep,
+    setDevSidebarOpen,
+    setSelectedActivityLogId,
+    resetToDefaults,
+  }), [
+    state,
+    transactions,
+    apiLogs,
+    toasts,
+    currentRoute,
+    showCreateTxModal,
+    showAskNaviModal,
+    askNaviInitialQuery,
+    welcomeModalOpen,
+    tourStep,
+    devSidebarOpen,
+    selectedActivityLogId,
+    showFeedbackModal,
+    showPrototypeModal,
+    setRoute,
+    updateState,
+    updateTestingState,
+    uploadEvidence,
+    removeEvidence,
+    attachRecording,
+    removeRecording,
+    attachScreenshot,
+    removeScreenshot,
+    addTransaction,
+    addApiLog,
+    createFailedSampleApiLog,
+    addToast,
+    removeToast,
+    openAskNaviWithQuery,
+    resetToDefaults,
+  ]);
 
   return (
-    <SandboxContext.Provider value={{
-      state,
-      transactions,
-      apiLogs,
-      toasts,
-      currentRoute,
-      showCreateTxModal,
-      showAskNaviModal,
-      askNaviInitialQuery,
-      welcomeModalOpen,
-      tourStep,
-      devSidebarOpen,
-      selectedActivityLogId,
-      showFeedbackModal,
-      showPrototypeModal,
-      setRoute,
-      updateState,
-      updateTestingState,
-      uploadEvidence,
-      removeEvidence,
-      addTransaction,
-      addApiLog,
-      createFailedSampleApiLog,
-      addToast,
-      removeToast,
-      setShowCreateTxModal,
-      setShowAskNaviModal,
-      setShowFeedbackModal,
-      setShowPrototypeModal,
-      openAskNaviWithQuery,
-      setWelcomeModalOpen,
-      setTourStep,
-      setDevSidebarOpen,
-      setSelectedActivityLogId,
-      resetToDefaults,
-    }}>
+    <SandboxContext.Provider value={contextValue}>
       {children}
     </SandboxContext.Provider>
   );

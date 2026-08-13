@@ -53,6 +53,15 @@ export interface QrTestingState {
   customerPaymentStates: CustomerPaymentStatesRequirement;
 }
 
+export interface UiEvidenceState {
+  recordingAttached: boolean;
+  recordingFileName?: string;
+  recordingFileSize?: string;
+  screenshotAttached: boolean;
+  screenshotFileName?: string;
+  screenshotFileSize?: string;
+}
+
 export interface ProductionReadiness {
   apiKeysVerified: boolean;
   webhookConfigured: boolean;
@@ -69,6 +78,7 @@ export interface SandboxState {
   qrIntegrationStatus: IntegrationStatus;
   hasDismissedQrHelper?: boolean;
   testingState?: QrTestingState;
+  uiEvidence?: UiEvidenceState;
   productionReadiness: ProductionReadiness;
   productionAccessStatus: ProductionAccessStatus;
   reviewStatus: ReviewStatus;
