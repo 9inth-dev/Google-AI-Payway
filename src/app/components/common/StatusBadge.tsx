@@ -4,9 +4,13 @@ export type StatusVariant =
   | 'testing'
   | 'active'
   | 'completed'
-  | 'provisional'
+  | 'submitted'
+  | 'resubmitted'
   | 'under_review'
+  | 'changes_requested'
   | 'approved'
+  | 'live'
+  | 'sandbox'
   | 'locked'
   | 'pending'
   | 'failed'
@@ -47,21 +51,17 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       break;
     case 'active':
     case 'approved':
+    case 'live':
     case 'completed':
     case 'success':
       bg = '#ECFDF5';
       text = '#059669';
       border = '#A7F3D0';
       dotColor = '#10B981';
-      defaultLabel = normStatus === 'success' ? 'Successful' : normStatus === 'active' ? 'Active' : normStatus === 'approved' ? 'Approved' : 'Completed';
+      defaultLabel = normStatus === 'success' ? 'Successful' : normStatus === 'live' ? 'Live Production' : normStatus === 'approved' ? 'Approved' : normStatus === 'active' ? 'Active' : 'Completed';
       break;
-    case 'provisional':
-      bg = '#FFFBEB';
-      text = '#D97706';
-      border = '#FDE68A';
-      dotColor = '#F59E0B';
-      defaultLabel = 'Provisional Access';
-      break;
+    case 'submitted':
+    case 'resubmitted':
     case 'under_review':
     case 'pending':
     case 'in_progress':
@@ -69,7 +69,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       text = '#2563EB';
       border = '#BFDBFE';
       dotColor = '#3B82F6';
-      defaultLabel = normStatus === 'under_review' ? 'Under Review' : normStatus === 'pending' ? 'Pending' : 'In Progress';
+      defaultLabel = normStatus === 'submitted' ? 'Submitted' : normStatus === 'resubmitted' ? 'Resubmitted' : normStatus === 'under_review' ? 'Under Review' : normStatus === 'pending' ? 'Pending' : 'In Progress';
+      break;
+    case 'changes_requested':
+      bg = '#FFFBEB';
+      text = '#D97706';
+      border = '#FDE68A';
+      dotColor = '#F59E0B';
+      defaultLabel = 'Changes Requested';
       break;
     case 'locked':
     case 'failed':

@@ -74,36 +74,25 @@ export const ApplyForProductionModal: React.FC<ApplyForProductionModalProps> = (
     e.preventDefault();
     if (!confirmedAuth) return;
 
-    const nowIso = new Date().toISOString();
     const isResubmission = state.reviewStatus === 'changes_requested';
-    const newReviewStatus = isResubmission ? 'resubmitted' : 'submitted';
-
-    // Rule 5 & 6: Provisional period lasts 30 days from FIRST successful submission.
-    // Resubmitting MUST NEVER restart the 30 day period.
-    const provisionalStartDate = state.provisionalStartDate || nowIso;
-
-    // Rule 10 & 11: Never issue a replacement key simply because state changes.
-    const productionApiKey = state.productionApiKey || 'pk_live_mct_883921_a9f8b7c6d5';
+    const newReviewStatus: ReviewStatus = isResubmission ? 'resubmitted' : 'submitted';
+    const newAccessStatus: ProductionAccessStatus = isResubmission ? 'resubmitted' : 'submitted';
 
     updateState({
-      productionAccessStatus: state.productionAccessStatus === 'full_production' ? 'full_production' : 'provisional_active',
+      productionAccessStatus: newAccessStatus,
       reviewStatus: newReviewStatus,
-      provisionalStartDate,
-      productionApiKey,
       productionReadiness: {
         ...state.productionReadiness,
         businessDetailsSubmitted: true,
       },
     });
 
-    // Temporary success notification per spec
     addToast(
-      'Production access is active',
-      'You can now accept live payments while PayWay reviews your application.',
+      'Production request submitted',
+      'Your QR API integration has been sent to the PayWay Integration Team for review. Reviews usually take 2 to 3 working days.',
       'success'
     );
 
-    // Return the user to the QR API workspace. Do not leave them inside a completion wizard.
     resetAndClose();
   };
 
@@ -875,7 +864,7 @@ export const ApplyForProductionModal: React.FC<ApplyForProductionModalProps> = (
               <div>
                 <h3 className="text-base font-bold text-gray-900 mb-1">Review application</h3>
                 <p className="text-xs text-gray-500">
-                  Verify your production setup summary before activating live provisional access.
+                  Verify your production setup summary before submitting your request for PayWay review.
                 </p>
               </div>
 
@@ -944,6 +933,11 @@ export const ApplyForProductionModal: React.FC<ApplyForProductionModalProps> = (
                 </div>
               </div>
 
+              {/* Notice Banner */}
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+                <strong>Notice:</strong> PayWay will review your integration and business information before issuing your production credentials. Reviews usually take 2 to 3 working days.
+              </div>
+
               {/* Confirmation Checkbox */}
               <label className="flex items-start gap-2.5 text-xs text-gray-700 cursor-pointer p-3 bg-cyan-50/50 border border-cyan-100 rounded-xl">
                 <input
@@ -966,13 +960,12 @@ export const ApplyForProductionModal: React.FC<ApplyForProductionModalProps> = (
                   ← Back
                 </button>
 
-                {/* PRIMARY CTA - CRITICAL WORDING MATCH */}
                 <button
                   type="submit"
                   disabled={!confirmedAuth}
-                  className="px-6 py-2.5 text-xs font-bold text-white rounded-lg shadow-md hover:opacity-95 transition-opacity disabled:opacity-50 cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600"
+                  className="px-6 py-2.5 text-xs font-bold text-white rounded-lg shadow-md hover:opacity-95 transition-opacity disabled:opacity-50 cursor-pointer bg-gradient-to-r from-cyan-600 to-cyan-700"
                 >
-                  Submit and activate provisional access
+                  Request production access
                 </button>
               </div>
             </form>

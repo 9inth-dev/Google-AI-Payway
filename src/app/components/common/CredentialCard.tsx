@@ -10,13 +10,14 @@ interface CredentialRowProps {
 export const CredentialRow: React.FC<CredentialRowProps> = ({ label, value, isSecret = false }) => {
   const [revealed, setRevealed] = useState(!isSecret);
   const [copied, setCopied] = useState(false);
-  const { addToast } = useSandbox();
+  const { addToast, updateState } = useSandbox();
 
   const handleCopy = () => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(value);
     }
     setCopied(true);
+    updateState({ hasCopiedApiCredentials: true });
     addToast('Copied to Clipboard', `${label} copied`, 'success');
     setTimeout(() => setCopied(false), 2000);
   };
@@ -72,13 +73,7 @@ export const CredentialCard: React.FC<{
   showMerchantId = true,
   showWebhook = false,
 }) => {
-  const { state, addToast } = useSandbox();
-
-  const handleRegenerate = () => {
-    if (confirm('Regenerate sandbox keys? Current test credentials will be updated.')) {
-      addToast('Keys Regenerated', 'New sandbox API keys issued successfully', 'info');
-    }
-  };
+  const { state } = useSandbox();
 
   return (
     <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-5 flex flex-col">
@@ -108,17 +103,6 @@ export const CredentialCard: React.FC<{
             )}
           </div>
         </div>
-        <button
-          onClick={handleRegenerate}
-          className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
-          title="Regenerate Sandbox Keys"
-        >
-          <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <polyline points="23 4 23 10 17 10"/>
-            <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
-          </svg>
-          Roll Keys
-        </button>
       </div>
 
       <div className="flex flex-col">

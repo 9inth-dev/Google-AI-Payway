@@ -46,12 +46,13 @@ export const Sidebar: React.FC = () => {
             icon={item.icon}
             active={isRouteActive(item.route)}
             badge={item.badge}
+            dataTour={item.route === '/integrations' ? 'sidebar-integrations' : undefined}
             onClick={() => setRoute(item.route)}
           />
         ))}
 
         {/* Developer Section Header */}
-        <div className="mt-4 px-3 pb-1">
+        <div className="mt-4 px-3 pb-1" data-tour="sidebar-developer">
           <div className="h-px bg-gray-100 mb-3" />
           <button
             type="button"
@@ -145,6 +146,7 @@ function NavItem({
   active,
   sub,
   badge,
+  dataTour,
   onClick,
 }: {
   label: string;
@@ -152,11 +154,13 @@ function NavItem({
   active?: boolean;
   sub?: boolean;
   badge?: string;
+  dataTour?: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
+      data-tour={dataTour}
       onClick={onClick}
       className="flex items-center justify-between w-full rounded text-left transition-colors cursor-pointer"
       style={{

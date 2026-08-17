@@ -37,11 +37,14 @@ function WatermarkPattern() {
 }
 
 export const AccountCreatedPage: React.FC = () => {
-  const { setRoute, setWelcomeModalOpen } = useSandbox();
+  const { setRoute, state } = useSandbox();
 
   const handleGoToSandbox = () => {
-    setRoute('/home');
-    setWelcomeModalOpen(true);
+    if (!state.hasSeenSandboxWelcome) {
+      setRoute('/welcome');
+    } else {
+      setRoute('/home');
+    }
   };
 
   return (
@@ -157,7 +160,7 @@ export const AccountCreatedPage: React.FC = () => {
               onMouseEnter={e => ((e.currentTarget as HTMLElement).style.backgroundColor = "#0A9BB0")}
               onMouseLeave={e => ((e.currentTarget as HTMLElement).style.backgroundColor = "#00B4CC")}
             >
-              Go to Sandbox
+              Let&apos;s get you started
             </button>
           </div>
         </div>

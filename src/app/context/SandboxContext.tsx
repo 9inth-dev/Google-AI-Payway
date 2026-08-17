@@ -20,6 +20,16 @@ const DEFAULT_SANDBOX_STATE: SandboxState = {
   hasIntegration: false,
   qrIntegrationStatus: 'not_started',
   hasDismissedQrHelper: false,
+  hasSeenSandboxWelcome: false,
+  hasCompletedWelcomeTour: false,
+  hasViewedSandboxCredentials: false,
+  hasCreatedFirstIntegration: false,
+  hasCompletedFirstTestPayment: false,
+  hasCopiedApiCredentials: false,
+  hasMadeFirstApiCall: false,
+  showPostTourGuideHighlight: false,
+  setupGuideDismissed: false,
+  hasVisitedIntegrations: false,
   testingState: DEFAULT_TESTING_STATE,
   uiEvidence: {
     recordingAttached: false,
@@ -35,10 +45,6 @@ const DEFAULT_SANDBOX_STATE: SandboxState = {
   },
   productionAccessStatus: 'sandbox',
   reviewStatus: 'none',
-  provisionalDaysRemaining: 30,
-  provisionalTransactionUsage: 0,
-  provisionalTransactionLimit: 100,
-  provisionalVolumeUSD: 0,
   publicKey: 'pk_sandbox_a1b2c3d4e5f6g7h8i9j0',
   secretKey: 'sk_sandbox_z9y8x7w6v5u4t3s2r1q0',
   merchantId: 'aba_payway_mch_883921',
@@ -46,9 +52,211 @@ const DEFAULT_SANDBOX_STATE: SandboxState = {
   webhookSecret: 'whsec_sandbox_998877665544332211',
 };
 
-const INITIAL_TRANSACTIONS: Transaction[] = [];
+const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'tx_001',
+    tranId: '000000000000123',
+    orderId: '000000000000123',
+    voucherCount: 1,
+    amount: 40.00,
+    currency: 'USD',
+    description: 'Spa Package Service #123',
+    status: 'SUCCESS',
+    orderStatus: 'Completed',
+    paymentType: 'KHQR',
+    paymentMethodType: 'abapay',
+    createdAt: '2026-08-16 10:24:12',
+    payerName: 'Lara Windfield',
+    phoneNumber: '+855 98 76 54 32',
+    discountedAmount: 0.00,
+    paidAmount: 40.00,
+    refundAmount: 0.00,
+    channel: 'Mobile App',
+    consumerType: 'Individual',
+    hash: '8e4f1a2b9c3d4e5f67890123456789ab',
+  },
+  {
+    id: 'tx_002',
+    tranId: '000000000000122',
+    orderId: '000000000000122',
+    voucherCount: 2,
+    amount: 12.50,
+    currency: 'USD',
+    description: 'Organic Tea & Treatment #122',
+    status: 'SUCCESS',
+    orderStatus: 'Completed',
+    paymentType: 'KHQR',
+    paymentMethodType: 'abapay',
+    createdAt: '2026-08-16 09:50:33',
+    payerName: 'Jasper Thorne',
+    phoneNumber: '+855 97 65 43 21',
+    discountedAmount: 0.00,
+    paidAmount: 12.50,
+    refundAmount: 0.00,
+    channel: 'Online',
+    consumerType: 'Individual',
+    hash: '5d3b2c1a8e7f609123456789abcdef01',
+  },
+  {
+    id: 'tx_003',
+    tranId: '000000000000121',
+    orderId: '000000000000121',
+    amount: 12.50,
+    currency: 'USD',
+    description: 'Aromatherapy Session #121',
+    status: 'SUCCESS',
+    orderStatus: 'Completed',
+    paymentType: 'KHQR',
+    paymentMethodType: 'wing',
+    createdAt: '2026-08-16 08:35:10',
+    payerName: 'Mira Larkspur',
+    phoneNumber: '+855 96 54 32 10',
+    discountedAmount: 0.00,
+    paidAmount: 12.50,
+    refundAmount: 0.00,
+    channel: 'POS',
+    consumerType: 'Individual',
+    hash: '3a1b2c4d5e6f7890123456789abcdef2',
+  },
+  {
+    id: 'tx_004',
+    tranId: '000000000000120',
+    orderId: '000000000000120',
+    amount: 12.50,
+    currency: 'USD',
+    description: 'Body Scrub Care #120',
+    status: 'SUCCESS',
+    orderStatus: 'Completed',
+    paymentType: 'KHQR',
+    paymentMethodType: 'acleda',
+    createdAt: '2026-08-15 16:12:45',
+    payerName: 'Finnian Crestwood',
+    phoneNumber: '+855 95 43 21 09',
+    discountedAmount: 0.00,
+    paidAmount: 12.50,
+    refundAmount: 0.00,
+    channel: 'Mobile App',
+    consumerType: 'Individual',
+    hash: '1f2e3d4c5b6a7890123456789abcdef3',
+  },
+  {
+    id: 'tx_005',
+    tranId: '000000000000119',
+    orderId: '000000000000119',
+    amount: 25.00,
+    currency: 'USD',
+    description: 'Herbal Compress Therapy #119',
+    status: 'SUCCESS',
+    orderStatus: 'Completed',
+    paymentType: 'CARD',
+    paymentMethodType: 'visa',
+    cardLast4: '1111',
+    cardLabel: 'Local card',
+    createdAt: '2026-08-15 14:40:19',
+    payerName: 'Zara Nightingale',
+    phoneNumber: '+855 94 32 10 98',
+    discountedAmount: 0.00,
+    paidAmount: 25.00,
+    refundAmount: 0.00,
+    channel: 'Online',
+    consumerType: 'Individual',
+    hash: '7b8c9d0e1f2a34567890123456789abc',
+  },
+  {
+    id: 'tx_006',
+    tranId: '000000000000118',
+    orderId: '000000000000118',
+    amount: 50.00,
+    currency: 'USD',
+    description: 'Deluxe Spa Retreat #118',
+    status: 'SUCCESS',
+    orderStatus: 'Completed',
+    paymentType: 'CARD',
+    paymentMethodType: 'mastercard',
+    cardLast4: '2222',
+    cardLabel: 'ABA card',
+    createdAt: '2026-08-14 11:15:00',
+    payerName: 'Orion Vale',
+    phoneNumber: '+855 93 21 09 87',
+    discountedAmount: 0.00,
+    paidAmount: 50.00,
+    refundAmount: 20.00,
+    channel: 'POS',
+    consumerType: 'Corporate',
+    hash: '9a0b1c2d3e4f567890123456789abcde',
+  },
+  {
+    id: 'tx_007',
+    tranId: '000000000000117',
+    orderId: '000000000000117',
+    amount: 120.00,
+    currency: 'USD',
+    description: 'Executive Wellness VIP #117',
+    status: 'SUCCESS',
+    orderStatus: 'Completed',
+    paymentType: 'CARD',
+    paymentMethodType: 'unionpay',
+    cardLast4: '3333',
+    cardLabel: 'Inter. card',
+    createdAt: '2026-08-14 09:02:11',
+    payerName: 'Talia Rivers',
+    phoneNumber: '+855 92 10 98 76',
+    discountedAmount: 0.00,
+    paidAmount: 120.00,
+    refundAmount: 70.00,
+    channel: 'Online',
+    consumerType: 'Individual',
+    hash: '4e5f6a7b8c9d01234567890123456789',
+  },
+  {
+    id: 'tx_008',
+    tranId: '000000000000116',
+    orderId: '000000000000116',
+    amount: 10.00,
+    currency: 'USD',
+    description: 'Essential Oils Boutique #116',
+    status: 'SUCCESS',
+    orderStatus: 'Completed',
+    paymentType: 'KHQR',
+    paymentMethodType: 'abapay',
+    createdAt: '2026-08-13 15:20:00',
+    payerName: 'Kieran Ashford',
+    phoneNumber: '+855 91 09 87 65',
+    discountedAmount: 0.00,
+    paidAmount: 10.00,
+    refundAmount: 10.00,
+    channel: 'Payment Link',
+    consumerType: 'Individual',
+    hash: '2c3d4e5f6a7b8c9d0123456789abcdef',
+  },
+  {
+    id: 'tx_009',
+    tranId: '000000000000115',
+    orderId: '000000000000115',
+    amount: 20.00,
+    currency: 'USD',
+    description: 'Reflexology Treatment #115',
+    status: 'SUCCESS',
+    orderStatus: 'Completed',
+    paymentType: 'CARD',
+    paymentMethodType: 'visa',
+    cardLast4: '4444',
+    cardLabel: 'ABA card',
+    createdAt: '2026-08-13 13:10:45',
+    payerName: 'Elena Starling',
+    phoneNumber: '+855 90 98 76 54',
+    discountedAmount: 0.00,
+    paidAmount: 20.00,
+    refundAmount: 20.00,
+    channel: 'Mobile App',
+    consumerType: 'Individual',
+    hash: '6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c',
+  }
+];
 
-const INITIAL_API_LOGS: ApiLog[] = [
+export const INITIAL_API_LOGS: ApiLog[] = [];
+
+export const SAMPLE_API_LOGS: ApiLog[] = [
   {
     id: 'log_001',
     timestamp: '10:24:12 AM',
@@ -210,6 +418,8 @@ interface SandboxContextType {
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt' | 'tranId'>) => Transaction;
   addApiLog: (log: Omit<ApiLog, 'id' | 'timestamp'> & { id?: string; timestamp?: string }) => ApiLog;
   createFailedSampleApiLog: () => ApiLog;
+  setApiLogs: React.Dispatch<React.SetStateAction<ApiLog[]>>;
+  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
   addToast: (title: string, message?: string, type?: ToastMessage['type']) => void;
   removeToast: (id: string) => void;
   setShowCreateTxModal: (show: boolean) => void;
@@ -240,19 +450,33 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
+      const savedState = localStorage.getItem('payway_sandbox_state');
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed.firstTimeUser) return [];
+      } else {
+        if (DEFAULT_SANDBOX_STATE.firstTimeUser) return [];
+      }
       const saved = localStorage.getItem('payway_sandbox_txs');
-      return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_TRANSACTIONS;
+      return [];
     }
   });
 
   const [apiLogs, setApiLogs] = useState<ApiLog[]>(() => {
     try {
+      const savedState = localStorage.getItem('payway_sandbox_state');
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed.firstTimeUser) return [];
+      } else {
+        if (DEFAULT_SANDBOX_STATE.firstTimeUser) return [];
+      }
       const saved = localStorage.getItem('payway_sandbox_apilogs');
-      return saved ? JSON.parse(saved) : INITIAL_API_LOGS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_API_LOGS;
+      return [];
     }
   });
 
@@ -276,7 +500,9 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch {
       // ignore
     }
-    return state.isLoggedIn ? '/home' : '/login';
+    if (!state.isLoggedIn) return '/login';
+    if (!state.hasSeenSandboxWelcome) return '/welcome';
+    return '/home';
   };
 
   const [currentRoute, setCurrentRoute] = useState<string>(getInitialRoute);
@@ -323,6 +549,9 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     setApiLogs(prev => [createdLog, ...prev]);
+    if (createdLog.status >= 200 && createdLog.status < 300) {
+      setState(prev => ({ ...prev, hasMadeFirstApiCall: true }));
+    }
     return createdLog;
   };
 
@@ -375,19 +604,44 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setShowAskNaviModal(true);
   };
 
-  // Persist the current route to sessionStorage (not the URL hash - see
-  // getInitialRoute above for why) so a page refresh stays on the same view.
+  // Persist the current route to sessionStorage & push to history
   useEffect(() => {
     try {
       sessionStorage.setItem('payway_sandbox_route', currentRoute);
+      if (window.location.pathname !== currentRoute) {
+        window.history.pushState(null, '', currentRoute);
+      }
     } catch {
       // ignore
     }
   }, [currentRoute]);
 
+  // Listen to browser Back/Forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path && path !== '/') {
+        setCurrentRoute(path);
+      } else {
+        setCurrentRoute('/home');
+      }
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const setRoute = useCallback((route: string) => {
     const cleanRoute = route.startsWith('/') ? route : `/${route}`;
     setCurrentRoute(cleanRoute);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    try {
+      if (window.location.pathname !== cleanRoute) {
+        window.history.pushState(null, '', cleanRoute);
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   const addToast = useCallback((title: string, message?: string, type: ToastMessage['type'] = 'info') => {
@@ -561,10 +815,20 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const now = new Date();
     const dateStr = now.toISOString().replace('T', ' ').substring(0, 19);
     
+    const orderIdNum = String(Date.now()).slice(-15).padStart(15, '0');
     const created: Transaction = {
       ...newTx,
       id: `txn_sb_${Date.now()}`,
-      tranId: `PW${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${randomSuffix}`,
+      tranId: newTx.orderId || orderIdNum,
+      orderId: newTx.orderId || orderIdNum,
+      orderStatus: newTx.orderStatus || (newTx.status === 'SUCCESS' ? 'Completed' : newTx.status === 'PENDING' ? 'Pending' : 'Failed'),
+      discountedAmount: newTx.discountedAmount ?? 0,
+      paidAmount: newTx.paidAmount ?? newTx.amount,
+      refundAmount: newTx.refundAmount ?? 0,
+      phoneNumber: newTx.phoneNumber || '+855 98 76 54 32',
+      paymentMethodType: newTx.paymentMethodType || (newTx.paymentType === 'CARD' ? 'visa' : 'abapay'),
+      channel: newTx.channel || 'Online',
+      consumerType: newTx.consumerType || 'Individual',
       createdAt: dateStr,
       hash: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
     };
@@ -573,11 +837,11 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     setState(prev => ({
       ...prev,
+      hasCompletedFirstTestPayment: true,
       productionReadiness: {
         ...prev.productionReadiness,
         testTransactionsCount: prev.productionReadiness.testTransactionsCount + 1,
       },
-      provisionalTransactionUsage: prev.provisionalTransactionUsage + 1,
     }));
 
     addToast('Transaction Created', `Successfully generated ${created.tranId}`, 'success');
@@ -621,6 +885,8 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addTransaction,
     addApiLog,
     createFailedSampleApiLog,
+    setApiLogs,
+    setTransactions,
     addToast,
     removeToast,
     setShowCreateTxModal,
@@ -660,6 +926,8 @@ export const SandboxProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addTransaction,
     addApiLog,
     createFailedSampleApiLog,
+    setApiLogs,
+    setTransactions,
     addToast,
     removeToast,
     openAskNaviWithQuery,

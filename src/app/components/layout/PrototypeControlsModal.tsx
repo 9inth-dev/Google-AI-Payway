@@ -1,6 +1,5 @@
 import React from 'react';
-import { useSandbox } from '../../context/SandboxContext';
-import { ReviewStatus, ProductionAccessStatus } from '../../types/sandbox';
+import { useSandbox, SAMPLE_API_LOGS } from '../../context/SandboxContext';
 
 interface PrototypeControlsModalProps {
   isOpen: boolean;
@@ -8,7 +7,7 @@ interface PrototypeControlsModalProps {
 }
 
 export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ isOpen, onClose }) => {
-  const { updateState, updateTestingState, addToast, setRoute, resetToDefaults } = useSandbox();
+  const { updateState, updateTestingState, addToast, setRoute, setApiLogs, setTransactions } = useSandbox();
 
   if (!isOpen) return null;
 
@@ -17,16 +16,25 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
 
     switch (presetName) {
       case 'first_time':
+        setApiLogs([]);
+        setTransactions([]);
         updateState({
           isLoggedIn: true,
           firstTimeUser: true,
+          hasSeenSandboxWelcome: false,
+          hasCompletedWelcomeTour: false,
           hasIntegration: false,
+          hasViewedSandboxCredentials: false,
+          hasCreatedFirstIntegration: false,
+          hasCompletedFirstTestPayment: false,
+          hasCopiedApiCredentials: false,
+          hasMadeFirstApiCall: false,
+          showPostTourGuideHighlight: false,
+          setupGuideDismissed: false,
+          hasVisitedIntegrations: false,
           qrIntegrationStatus: 'not_started',
           productionAccessStatus: 'sandbox',
           reviewStatus: 'none',
-          provisionalStartDate: undefined,
-          provisionalTransactionUsage: 0,
-          provisionalVolumeUSD: 0,
         });
         updateTestingState({
           qrGenerated: { status: 'not_detected' },
@@ -35,21 +43,21 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
           statusConfirmed: { status: 'not_detected' },
           customerPaymentStates: { status: 'not_detected', successStateDetected: false, expiredStateDetected: false },
         });
-        addToast('Preset Applied: First Time User', 'Reset sandbox to initial unintegrated state', 'info');
-        setRoute('/home');
+        addToast('Preset Applied: First Time User', 'Reset sandbox to initial unintegrated state with Welcome screen', 'info');
+        setRoute('/welcome');
         break;
 
       case 'integration_started':
+        setApiLogs(SAMPLE_API_LOGS.slice(0, 1));
         updateState({
           isLoggedIn: true,
           firstTimeUser: false,
+          hasSeenSandboxWelcome: true,
+          hasCompletedWelcomeTour: true,
           hasIntegration: true,
           qrIntegrationStatus: 'in_progress',
           productionAccessStatus: 'sandbox',
           reviewStatus: 'none',
-          provisionalStartDate: undefined,
-          provisionalTransactionUsage: 1,
-          provisionalVolumeUSD: 25,
         });
         updateTestingState({
           qrGenerated: { status: 'verified', timestamp: now.toLocaleTimeString() },
@@ -63,6 +71,7 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
         break;
 
       case 'partially_tested':
+        setApiLogs(SAMPLE_API_LOGS.slice(0, 3));
         updateState({
           isLoggedIn: true,
           firstTimeUser: false,
@@ -70,9 +79,6 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
           qrIntegrationStatus: 'in_progress',
           productionAccessStatus: 'sandbox',
           reviewStatus: 'none',
-          provisionalStartDate: undefined,
-          provisionalTransactionUsage: 3,
-          provisionalVolumeUSD: 150,
         });
         updateTestingState({
           qrGenerated: { status: 'verified', timestamp: now.toLocaleTimeString() },
@@ -86,6 +92,7 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
         break;
 
       case 'production_ready':
+        setApiLogs(SAMPLE_API_LOGS);
         updateState({
           isLoggedIn: true,
           firstTimeUser: false,
@@ -93,9 +100,6 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
           qrIntegrationStatus: 'verified',
           productionAccessStatus: 'sandbox',
           reviewStatus: 'none',
-          provisionalStartDate: undefined,
-          provisionalTransactionUsage: 5,
-          provisionalVolumeUSD: 350,
           productionReadiness: {
             apiKeysVerified: true,
             webhookConfigured: true,
@@ -119,86 +123,60 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
           },
         });
         addToast('Preset Applied: Production Ready', '5/5 requirements verified! Ready to apply.', 'success');
-        setRoute('/integrations/qr-api/readiness');
+        setRoute('/integrations/qr-api/production');
         break;
 
-      case 'provisional_day1':
+      case 'submitted':
         updateState({
           isLoggedIn: true,
           firstTimeUser: false,
           hasIntegration: true,
           qrIntegrationStatus: 'verified',
-          productionAccessStatus: 'provisional_active',
+          productionAccessStatus: 'pending_review',
           reviewStatus: 'submitted',
-          provisionalStartDate: now.toISOString(),
-          provisionalDaysRemaining: 30,
-          provisionalTransactionUsage: 4,
-          provisionalVolumeUSD: 200,
-          productionApiKey: 'pk_live_mct_883921_a9f8b7c6d5e4',
         });
-        addToast('Preset Applied: Provisional Day 1', 'Provisional key active with 30 days remaining', 'success');
+        addToast('Preset Applied: Request Submitted', 'Application queued for PayWay review', 'info');
         setRoute('/integrations/qr-api/production');
         break;
 
-      case 'provisional_day20': {
-        const day20Date = new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000).toISOString();
+      case 'under_review':
         updateState({
           isLoggedIn: true,
           firstTimeUser: false,
           hasIntegration: true,
           qrIntegrationStatus: 'verified',
-          productionAccessStatus: 'provisional_active',
+          productionAccessStatus: 'pending_review',
           reviewStatus: 'under_review',
-          provisionalStartDate: day20Date,
-          provisionalDaysRemaining: 10,
-          provisionalTransactionUsage: 42,
-          provisionalVolumeUSD: 2100,
-          productionApiKey: 'pk_live_mct_883921_a9f8b7c6d5e4',
         });
-        addToast('Preset Applied: Provisional Day 20', 'Under review with 10 days remaining', 'info');
+        addToast('Preset Applied: Under PayWay Review', 'PayWay team evaluating submission', 'info');
         setRoute('/integrations/qr-api/production');
         break;
-      }
 
-      case 'changes_requested': {
-        const day12Date = new Date(now.getTime() - 12 * 24 * 60 * 60 * 1000).toISOString();
+      case 'changes_requested':
         updateState({
           isLoggedIn: true,
           firstTimeUser: false,
           hasIntegration: true,
           qrIntegrationStatus: 'verified',
-          productionAccessStatus: 'provisional_active',
+          productionAccessStatus: 'pending_review',
           reviewStatus: 'changes_requested',
-          provisionalStartDate: day12Date,
-          provisionalDaysRemaining: 18,
-          provisionalTransactionUsage: 25,
-          provisionalVolumeUSD: 1250,
-          productionApiKey: 'pk_live_mct_883921_a9f8b7c6d5e4',
         });
-        addToast('Preset Applied: Changes Requested', 'PayWay requested changes; key remains active', 'warning');
+        addToast('Preset Applied: Changes Requested', 'PayWay requested application updates', 'warning');
         setRoute('/integrations/qr-api/production');
         break;
-      }
 
-      case 'provisional_expired': {
-        const expiredDate = new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000).toISOString();
+      case 'resubmitted':
         updateState({
           isLoggedIn: true,
           firstTimeUser: false,
           hasIntegration: true,
           qrIntegrationStatus: 'verified',
-          productionAccessStatus: 'provisional_expired',
-          reviewStatus: 'under_review',
-          provisionalStartDate: expiredDate,
-          provisionalDaysRemaining: 0,
-          provisionalTransactionUsage: 65,
-          provisionalVolumeUSD: 3250,
-          productionApiKey: 'pk_live_mct_883921_a9f8b7c6d5e4',
+          productionAccessStatus: 'pending_review',
+          reviewStatus: 'resubmitted',
         });
-        addToast('Preset Applied: Provisional Expired', 'Key blocked due to 30-day expiration', 'error');
+        addToast('Preset Applied: Resubmitted for Review', 'Updated request resubmitted to PayWay', 'info');
         setRoute('/integrations/qr-api/production');
         break;
-      }
 
       case 'approved':
         updateState({
@@ -208,11 +186,9 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
           qrIntegrationStatus: 'verified',
           productionAccessStatus: 'full_production',
           reviewStatus: 'approved',
-          provisionalTransactionUsage: 110,
-          provisionalVolumeUSD: 5500,
           productionApiKey: 'pk_live_mct_883921_a9f8b7c6d5e4',
         });
-        addToast('Preset Applied: Approved', 'Full production granted! Limits removed from same key.', 'success');
+        addToast('Preset Applied: Approved', 'Live Production API Key issued!', 'success');
         setRoute('/integrations/qr-api/production');
         break;
 
@@ -237,13 +213,13 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
                 Stakeholder Demonstration Presets
               </h3>
               <p className="text-[11px] text-slate-400">
-                Instantly jump to any stage of the PayWay Sandbox lifecycle.
+                Instantly jump to any stage of the PayWay Integration lifecycle.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white text-xl font-bold w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center transition-colors"
+            className="text-slate-400 hover:text-white text-xl font-bold w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center transition-colors cursor-pointer"
           >
             ×
           </button>
@@ -257,7 +233,7 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
               className="p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-left transition-colors cursor-pointer"
             >
               <div className="text-xs font-bold text-slate-200">1. First Time User</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Unintegrated Home page with Ask Navi recommendation prompt.</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Unintegrated Home page with Onboarding Tour &amp; Product setup.</div>
             </button>
 
             <button
@@ -285,19 +261,19 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
             </button>
 
             <button
-              onClick={() => applyPreset('provisional_day1')}
+              onClick={() => applyPreset('submitted')}
               className="p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-left transition-colors cursor-pointer"
             >
-              <div className="text-xs font-bold text-cyan-400">5. Provisional Day 1</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Application submitted, live key active (30 days left).</div>
+              <div className="text-xs font-bold text-blue-300">5. Request Submitted</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Application sent to PayWay. Review pending (2-3 days).</div>
             </button>
 
             <button
-              onClick={() => applyPreset('provisional_day20')}
+              onClick={() => applyPreset('under_review')}
               className="p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-left transition-colors cursor-pointer"
             >
-              <div className="text-xs font-bold text-purple-400">6. Provisional Day 20</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Under Review state with 10 days remaining.</div>
+              <div className="text-xs font-bold text-purple-400">6. Under PayWay Review</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">PayWay team actively evaluating technical implementation.</div>
             </button>
 
             <button
@@ -305,23 +281,23 @@ export const PrototypeControlsModal: React.FC<PrototypeControlsModalProps> = ({ 
               className="p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-left transition-colors cursor-pointer"
             >
               <div className="text-xs font-bold text-amber-300">7. Changes Requested</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">PayWay requested changes; key remains active.</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">PayWay requested updates. Attention card &amp; feedback active.</div>
             </button>
 
             <button
-              onClick={() => applyPreset('provisional_expired')}
+              onClick={() => applyPreset('resubmitted')}
               className="p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-left transition-colors cursor-pointer"
             >
-              <div className="text-xs font-bold text-rose-300">8. Provisional Expired</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">30-day window elapsed; key blocked until approval.</div>
+              <div className="text-xs font-bold text-cyan-400">8. Resubmitted for Review</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Updated application resubmitted for PayWay review.</div>
             </button>
 
             <button
               onClick={() => applyPreset('approved')}
               className="p-3 sm:col-span-2 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-xl text-left transition-colors cursor-pointer"
             >
-              <div className="text-xs font-bold text-emerald-300">9. Approved (Full Production)</div>
-              <div className="text-[10px] text-slate-300 mt-0.5">Full production access granted. Same key reactivated with all limits removed!</div>
+              <div className="text-xs font-bold text-emerald-300">9. Approved (Live Production)</div>
+              <div className="text-[10px] text-slate-300 mt-0.5">Application approved! Live Production Key issued and active.</div>
             </button>
           </div>
         </div>

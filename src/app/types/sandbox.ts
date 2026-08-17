@@ -8,10 +8,12 @@ export type IntegrationStatus =
 
 export type ProductionAccessStatus = 
   | 'sandbox'
-  | 'provisional_active'
-  | 'provisional_expired'
-  | 'provisional_limit_reached'
-  | 'full_production';
+  | 'submitted'
+  | 'under_review'
+  | 'changes_requested'
+  | 'resubmitted'
+  | 'approved'
+  | 'live';
 
 export type ReviewStatus = 
   | 'none'
@@ -77,16 +79,24 @@ export interface SandboxState {
   hasIntegration: boolean;
   qrIntegrationStatus: IntegrationStatus;
   hasDismissedQrHelper?: boolean;
+
+  // Onboarding & Guided Tour State
+  hasSeenSandboxWelcome?: boolean;
+  hasCompletedWelcomeTour: boolean;
+  hasViewedSandboxCredentials: boolean;
+  hasCreatedFirstIntegration: boolean;
+  hasCompletedFirstTestPayment: boolean;
+  hasCopiedApiCredentials?: boolean;
+  hasMadeFirstApiCall?: boolean;
+  showPostTourGuideHighlight?: boolean;
+  setupGuideDismissed: boolean;
+  hasVisitedIntegrations: boolean;
+
   testingState?: QrTestingState;
   uiEvidence?: UiEvidenceState;
   productionReadiness: ProductionReadiness;
   productionAccessStatus: ProductionAccessStatus;
   reviewStatus: ReviewStatus;
-  provisionalDaysRemaining: number;
-  provisionalTransactionUsage: number;
-  provisionalTransactionLimit: number;
-  provisionalVolumeUSD?: number;
-  provisionalStartDate?: string;
   productionApiKey?: string;
   
   // Credentials
@@ -102,11 +112,23 @@ export interface SandboxState {
 export interface Transaction {
   id: string;
   tranId: string;
+  orderId?: string;
+  voucherCount?: number; // for red ticket icon e.g. x1, x2
   amount: number;
   currency: 'USD' | 'KHR';
   description: string;
   status: 'SUCCESS' | 'PENDING' | 'FAILED';
+  orderStatus?: 'Completed' | 'Pending' | 'Failed' | 'Refunded' | 'Cancelled';
   paymentType: 'KHQR' | 'CARD' | 'DEEPLINK';
+  paymentMethodType?: 'abapay' | 'wing' | 'acleda' | 'visa' | 'mastercard' | 'unionpay' | 'jcb';
+  cardLast4?: string;
+  cardLabel?: string; // e.g. "Local card", "ABA card", "Inter. card"
+  phoneNumber?: string;
+  discountedAmount?: number;
+  paidAmount?: number;
+  refundAmount?: number;
+  channel?: string;
+  consumerType?: string;
   createdAt: string;
   payerName?: string;
   hash?: string;

@@ -1,10 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSandbox } from '../../context/SandboxContext';
+import {
+  X,
+  Copy,
+  Check,
+  ThumbsUp,
+  ThumbsDown,
+  Volume2,
+  Mic,
+  Send,
+  RotateCcw,
+  Sparkles,
+  ArrowRight,
+} from 'lucide-react';
 
-interface QuestionTopic {
-  title: string;
-  query: string;
-  answer: string;
+interface CodeSnippet {
+  language: string;
+  code: string;
+}
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'navi';
+  type?: 'text' | 'voice';
+  text?: string;
+  voiceDuration?: string;
+  timestamp: string;
+  codeSnippet?: CodeSnippet;
+  liked?: boolean | null;
+  suggestions?: string[];
+  cta?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 export const AskNaviModal: React.FC = () => {
@@ -12,333 +40,588 @@ export const AskNaviModal: React.FC = () => {
     showAskNaviModal,
     setShowAskNaviModal,
     askNaviInitialQuery,
-    currentRoute,
-    state,
-    updateState,
     setRoute,
     addToast,
+    state,
+    updateState,
   } = useSandbox();
 
   const [query, setQuery] = useState('');
-  const [chat, setChat] = useState<{
-    role: 'user' | 'navi';
-    text: string;
-    options?: { label: string; action: () => void }[];
-    cta?: { label: string; onClick: () => void };
-  }[]>([
+  const [isTyping, setIsTyping] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showUsagePolicy, setShowUsagePolicy] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Initial demo messages matching screenshot exactly
+  const initialMessages: ChatMessage[] = [
     {
-      role: 'navi',
-      text: "Hello! I'm Navi, your ABA PayWay Developer Assistant. Ask me anything about KHQR APIs, sandbox testing, or production access!",
+      id: 'msg-voice-1',
+      role: 'user',
+      type: 'voice',
+      voiceDuration: '0:08',
+      timestamp: '12:23 AM',
     },
-  ]);
-
-  // Contextual question prompts depending on current route
-  const getContextualTopics = (): QuestionTopic[] => {
-    if (currentRoute.includes('/production')) {
-      return [
-        {
-          title: 'What is provisional production?',
-          query: 'What does provisional production mean?',
-          answer:
-            'Provisional production gives you an active production API key immediately upon application submission. You can process live payments for up to 30 days while PayWay Integration Managers review your compliance evidence.',
-        },
-        {
-          title: 'What happens after approval?',
-          query: 'What happens after approval?',
-          answer:
-            'Upon PayWay approval, all provisional restrictions (30-day countdown and transaction caps) are permanently removed from your SAME production API key. No key replacement or reconfiguration is required.',
-        },
-        {
-          title: 'Why are payments paused?',
-          query: 'Why are my payments currently paused?',
-          answer:
-            'Payments stop processing if your 30-day provisional window expires OR if you reach the provisional transaction cap ($5,000 USD / 100 txs) before approval. Once PayWay approves your submission, your key reactivates automatically.',
-        },
-      ];
-    }
-
-    if (currentRoute.includes('/integrations/qr-api')) {
-      return [
-        {
-          title: 'How do I generate a QR?',
-          query: 'How do I generate a QR?',
-          answer:
-            'Send a POST request to `/api/v1/purchase/create_qr` with `req_time`, `merchant_id`, `tran_id`, `amount`, `currency` (USD/KHR), `items`, and `hash`. The response contains `qr_string` and base64 `qr_image`.',
-        },
-        {
-          title: 'Why did this request fail?',
-          query: 'Why did this request fail?',
-          answer:
-            'Most API failures in Sandbox stem from HMAC-SHA512 signature mismatches (ERR_400_INVALID_HASH). Verify that parameter concatenation order matches: req_time + merchant_id + tran_id + amount + items + shipping + firstname + lastname + email + phone + type + payment_option, hashed with your secret key.',
-        },
-        {
-          title: 'How do webhooks work?',
-          query: 'How do webhooks work?',
-          answer:
-            `When a customer completes a payment via ABA Mobile or KHQR, PayWay sends a POST notification to your webhook URL (${state.webhookUrl || 'https://api.yourcompany.com/v1/payway-webhook'}) containing status, tran_id, approval_code, and hash signature.`,
-        },
-      ];
-    }
-
-    // Default Developer Home Context
-    return [
-      {
-        title: 'What product should I use?',
-        query: 'What PayWay product should I use?',
-        answer: '', // Triggers recommendation flow
-      },
-      {
-        title: 'How do sandbox keys work?',
-        query: 'How do sandbox keys work?',
-        answer:
-          'Sandbox keys (`pk_sandbox_...` and `sk_sandbox_...`) allow you to test API calls against `https://sandbox.payway.com.kh` without processing real money. When ready, apply for Provisional Production Access to receive your live key.',
-      },
-      {
-        title: 'How do I test QR payments?',
-        query: 'How do I test QR payments?',
-        answer:
-          'Navigate to QR API Workspace → Overview, and click Open QR Simulator. You can simulate scanning with ABA Mobile, test successful payments, and verify expired QR handling.',
-      },
-    ];
+    {
+      id: 'msg-reply-1',
+      role: 'navi',
+      type: 'text',
+      text: 'Here is the official PayWay “Purchase” API example in JavaScript (frontend) and PHP (backend) from the developer docs. Replace the empty values with your real merchant data and generated hash.',
+      timestamp: '12:25 AM',
+      liked: null,
+      codeSnippet: {
+        language: 'JAVASCRIPT',
+        code: `function debounce(func, delay) {
+  let timeoutId;
+  return function(...args) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      func.apply(this, args);
+    }, delay);
   };
+}
 
-  const contextualTopics = getContextualTopics();
+// Usage: Prevent API calls on every keystroke
+const searchInput = document.getElementById('search');
+searchInput.addEventListener('input', debounce((e) => {
+  console.log('Searching for:', e.target.value);
+}, 300));`,
+      },
+    },
+  ];
 
-  // Handle Initial Query or First-time user greeting
+  const [chat, setChat] = useState<ChatMessage[]>(initialMessages);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chat, isTyping]);
+
+  // Focus input when opened
   useEffect(() => {
     if (showAskNaviModal) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 150);
+
       if (askNaviInitialQuery) {
-        handleAsk(askNaviInitialQuery);
-      } else if (!state.hasIntegration && currentRoute === '/home') {
-        // Welcome recommendation prompt on First Time Home
-        setChat([
-          {
-            role: 'navi',
-            text: "Hello! I'm Navi, your PayWay Assistant. Let's find the best payment integration for your business. How do you want customers to pay?",
-            options: [
-              { label: 'Scan a QR code', action: () => handleRecommendationSelect('qr') },
-              { label: 'Pay through an online checkout', action: () => handleRecommendationSelect('checkout') },
-              { label: 'I am not sure', action: () => handleRecommendationSelect('unsure') },
-            ],
-          },
-        ]);
+        handleSendMessage(askNaviInitialQuery);
       }
     }
   }, [showAskNaviModal, askNaviInitialQuery]);
 
+  // ESC to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showAskNaviModal) {
+        setShowAskNaviModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAskNaviModal, setShowAskNaviModal]);
+
   if (!showAskNaviModal) return null;
 
-  // Recommendation flow handler
-  const handleRecommendationSelect = (choice: 'qr' | 'checkout' | 'unsure') => {
-    if (choice === 'qr') {
-      setChat(prev => [
-        ...prev,
-        { role: 'user', text: 'Scan a QR code' },
-        {
+  // Copy code helper
+  const handleCopyCode = (code: string, id: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    addToast('Copied to Clipboard', 'Code snippet copied to clipboard', 'info');
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Feedback thumb action
+  const handleToggleLike = (msgId: string, isLike: boolean) => {
+    setChat(prev =>
+      prev.map(m => {
+        if (m.id === msgId) {
+          const nextVal = m.liked === isLike ? null : isLike;
+          if (nextVal === true) addToast('Feedback Saved', 'Thank you for your rating!', 'success');
+          return { ...m, liked: nextVal };
+        }
+        return m;
+      })
+    );
+  };
+
+  // Voice toggle simulation
+  const handleToggleVoice = () => {
+    if (isRecordingVoice) {
+      setIsRecordingVoice(false);
+      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const newVoiceMsg: ChatMessage = {
+        id: `voice-${Date.now()}`,
+        role: 'user',
+        type: 'voice',
+        voiceDuration: '0:05',
+        timestamp,
+      };
+      setChat(prev => [...prev, newVoiceMsg]);
+      setIsTyping(true);
+
+      setTimeout(() => {
+        const botMsg: ChatMessage = {
+          id: `reply-${Date.now()}`,
           role: 'navi',
-          text: '💡 **Recommend: QR API**\n\n**Reason:** QR API lets you generate payment QR codes inside your own product so customers can pay using ABA Mobile or supported KHQR apps.',
+          type: 'text',
+          text: 'I processed your audio query regarding KHQR payment generation. Here is the verified request body payload and HMAC calculation sample:',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          codeSnippet: {
+            language: 'JAVASCRIPT',
+            code: `// Generate Dynamic KHQR Payload
+const payload = {
+  req_time: "20260816110724",
+  merchant_id: "ec438842",
+  tran_id: "ORDER_${Math.floor(10000 + Math.random() * 90000)}",
+  amount: "12.50",
+  currency: "USD",
+  type: "purchase",
+  hash: generatePaywayHash(signatureString, apiKey)
+};`,
+          },
           cta: {
-            label: 'Start QR API integration →',
+            label: 'Open QR API Workspace →',
             onClick: () => {
-              updateState({ hasIntegration: true, qrIntegrationStatus: 'in_progress' });
               setRoute('/integrations/qr-api');
               setShowAskNaviModal(false);
-              addToast('Workspace Created', 'QR API Workspace initialized', 'success');
             },
           },
-        },
-      ]);
+        };
+        setChat(prev => [...prev, botMsg]);
+        setIsTyping(false);
+      }, 700);
     } else {
-      setChat(prev => [
-        ...prev,
-        { role: 'user', text: choice === 'checkout' ? 'Pay through an online checkout' : 'I am not sure' },
-        {
-          role: 'navi',
-          text: 'For hosted payment pages, Checkout Page is available. However, for native in-app mobile payments in Cambodia, **QR API** is our recommended integration choice.',
-          cta: {
-            label: 'Start QR API integration →',
-            onClick: () => {
-              updateState({ hasIntegration: true, qrIntegrationStatus: 'in_progress' });
-              setRoute('/integrations/qr-api');
-              setShowAskNaviModal(false);
-              addToast('Workspace Created', 'QR API Workspace initialized', 'success');
-            },
-          },
-        },
-      ]);
+      setIsRecordingVoice(true);
+      addToast('Voice Recording', 'Listening to your audio question... Click Voice again to send', 'info');
     }
   };
 
-  const handleAsk = (userQuery: string) => {
-    if (!userQuery.trim()) return;
+  // Response logic
+  const handleSendMessage = (textToSend: string) => {
+    if (!textToSend.trim()) return;
 
-    // Check if user is asking "What PayWay product should I use?"
-    if (userQuery.toLowerCase().includes('what payway product') || userQuery.toLowerCase().includes('product should i use')) {
-      setChat(prev => [
-        ...prev,
-        { role: 'user', text: userQuery },
-        {
-          role: 'navi',
-          text: "Let's find the best PayWay integration for your business. How do you want customers to pay?",
-          options: [
-            { label: 'Scan a QR code', action: () => handleRecommendationSelect('qr') },
-            { label: 'Pay through an online checkout', action: () => handleRecommendationSelect('checkout') },
-            { label: 'I am not sure', action: () => handleRecommendationSelect('unsure') },
-          ],
-        },
-      ]);
-      setQuery('');
-      return;
-    }
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMsg: ChatMessage = {
+      id: `usr-${Date.now()}`,
+      role: 'user',
+      type: 'text',
+      text: textToSend,
+      timestamp,
+    };
 
-    const topic = contextualTopics.find(
-      t => t.query.toLowerCase().substring(0, 15) === userQuery.toLowerCase().substring(0, 15)
-    );
-
-    const newChat = [...chat, { role: 'user' as const, text: userQuery }];
-    setChat(newChat);
+    setChat(prev => [...prev, userMsg]);
     setQuery('');
+    setIsTyping(true);
+
+    const q = textToSend.toLowerCase();
 
     setTimeout(() => {
-      let reply = topic?.answer
-        ? topic.answer
-        : `Great question regarding "${userQuery}"! In the PayWay Sandbox, all endpoints operate under sandbox.payway.com.kh. You can verify payloads, inspect logs, or simulate KHQR payments in your workspace.`;
+      let botResponse: ChatMessage;
 
-      setChat(prev => [...prev, { role: 'navi', text: reply }]);
-    }, 400);
+      if (q.includes('qr') || q.includes('khqr')) {
+        botResponse = {
+          id: `navi-${Date.now()}`,
+          role: 'navi',
+          type: 'text',
+          text: 'To generate a dynamic KHQR code with PayWay, send a `POST` request to `/api/v1/purchase/create_qr` on the sandbox server. The response returns an EMVCo-compliant QR string and base64 image.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          codeSnippet: {
+            language: 'JAVASCRIPT',
+            code: `const response = await fetch("https://sandbox.payway.com.kh/api/v1/purchase/create_qr", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    req_time: "20260816110724",
+    merchant_id: "ec438842",
+    tran_id: "TRX_99120",
+    amount: "25.00",
+    currency: "USD",
+    hash: calculatedHash
+  })
+});
+const data = await response.json();
+console.log("KHQR String:", data.qr_string);`,
+          },
+          cta: {
+            label: 'Open QR API Workspace →',
+            onClick: () => {
+              setRoute('/integrations/qr-api');
+              setShowAskNaviModal(false);
+            },
+          },
+        };
+      } else if (q.includes('hash') || q.includes('hmac') || q.includes('signature')) {
+        botResponse = {
+          id: `navi-${Date.now()}`,
+          role: 'navi',
+          type: 'text',
+          text: 'PayWay uses an HMAC-SHA512 hash signature. If you receive `ERR_400_INVALID_HASH`, check parameter concatenation order. Optional parameters must be concatenated as empty strings.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          codeSnippet: {
+            language: 'JAVASCRIPT',
+            code: `import crypto from 'crypto';
+
+function generatePaywayHash(fields, secretApiKey) {
+  const rawString = [
+    fields.req_time,
+    fields.merchant_id,
+    fields.tran_id,
+    fields.amount,
+    fields.items || '',
+    fields.shipping || '',
+    fields.firstname || '',
+    fields.lastname || '',
+    fields.email || '',
+    fields.phone || '',
+    fields.type || '',
+    fields.payment_option || ''
+  ].join('');
+
+  return crypto
+    .createHmac('sha512', secretApiKey)
+    .update(rawString)
+    .digest('base64');
+}`,
+          },
+        };
+      } else if (q.includes('provisional') || q.includes('production') || q.includes('live')) {
+        botResponse = {
+          id: `navi-${Date.now()}`,
+          role: 'navi',
+          type: 'text',
+          text: 'Provisional Production grants immediate live processing capabilities for up to 30 days while your compliance documents are reviewed. Once approved, the provisional limit is removed automatically from your same API key.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          cta: {
+            label: 'View Production Access Center →',
+            onClick: () => {
+              setRoute('/production');
+              setShowAskNaviModal(false);
+            },
+          },
+        };
+      } else {
+        botResponse = {
+          id: `navi-${Date.now()}`,
+          role: 'navi',
+          type: 'text',
+          text: `Regarding "${textToSend}": In the PayWay Developer Sandbox, you can test KHQR payments, simulate ABA PAY checkouts, inspect webhooks, and verify HMAC SHA-512 signatures.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          codeSnippet: {
+            language: 'JAVASCRIPT',
+            code: `// Verify incoming webhook status
+if (webhookPayload.status === "0") {
+  console.log("Transaction successfully paid:", webhookPayload.tran_id);
+}`,
+          },
+        };
+      }
+
+      setChat(prev => [...prev, botResponse]);
+      setIsTyping(false);
+    }, 500);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-2xs animate-fadeIn">
-      {/* SIDE PANEL DRAWER */}
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-slate-900/35 transition-opacity animate-in fade-in duration-200"
+      onClick={() => setShowAskNaviModal(false)}
+    >
+      {/* SIDE DRAWER CONTAINER */}
       <div
-        className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-gray-200 animate-slideLeft"
+        className="w-full sm:w-[440px] md:w-[470px] lg:w-[490px] h-full bg-white flex flex-col border-l border-gray-200 shadow-2xl animate-in slide-in-from-right duration-250 ease-out select-none"
         onClick={e => e.stopPropagation()}
       >
-        {/* HEADER */}
-        <div
-          className="px-6 py-4 flex items-center justify-between text-white shrink-0"
-          style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #0D5C73 100%)' }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg font-bold">
-              ✦
-            </div>
-            <div>
-              <h3 className="font-extrabold text-base tracking-tight">Ask Navi</h3>
-              <p className="text-xs text-white/80">ABA PayWay AI Developer Assistant</p>
-            </div>
+        {/* ================= TOP HEADER ================= */}
+        <div className="px-6 py-4.5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-0.5">
+            <span className="text-xl font-bold text-gray-900 tracking-tight">Navi</span>
+            <sup className="text-sm font-bold text-[#8B5CF6] leading-none ml-0.5">⁺</sup>
           </div>
-          <button
-            onClick={() => setShowAskNaviModal(false)}
-            className="text-white/80 hover:text-white text-2xl font-bold leading-none cursor-pointer"
-          >
-            ×
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setChat(initialMessages);
+                addToast('Conversation Reset', 'Reset chat to initial example', 'info');
+              }}
+              title="Reset conversation"
+              className="p-1 text-gray-400 hover:text-gray-600 rounded-md transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAskNaviModal(false)}
+              className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+              title="Close panel"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* CHAT MESSAGES */}
-        <div className="flex-1 p-5 overflow-y-auto flex flex-col gap-4 bg-gray-50/50">
-          {chat.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex items-start gap-2.5 max-w-[90%] ${
-                msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''
-              }`}
-            >
-              {msg.role === 'navi' ? (
-                <div className="w-7 h-7 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs shrink-0 font-bold shadow-xs">
-                  ✦
-                </div>
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs shrink-0 font-bold shadow-xs">
-                  YOU
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2">
-                <div
-                  className={`p-3.5 rounded-2xl text-xs leading-relaxed shadow-xs ${
-                    msg.role === 'user'
-                      ? 'bg-teal-700 text-white rounded-tr-none font-medium'
-                      : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none font-medium'
-                  }`}
-                  style={{ whitespace: 'pre-line' }}
-                >
-                  {msg.text}
-                </div>
-
-                {/* Option Buttons if provided */}
-                {msg.options && (
-                  <div className="flex flex-col gap-1.5 mt-1">
-                    {msg.options.map((opt, idx) => (
-                      <button
-                        key={idx}
-                        onClick={opt.action}
-                        className="px-3.5 py-2 text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-xl transition-colors text-left cursor-pointer shadow-2xs"
-                      >
-                        👉 {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* CTA Button inside chat bubble */}
-                {msg.cta && (
-                  <button
-                    onClick={msg.cta.onClick}
-                    className="mt-1 px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 rounded-xl shadow-md transition-all cursor-pointer text-center"
+        {/* ================= CHAT SCROLLABLE CONTAINER ================= */}
+        <div className="flex-1 p-5 overflow-y-auto flex flex-col gap-4 bg-white">
+          {chat.map(msg => {
+            // User Voice Message (Waveform pill)
+            if (msg.role === 'user' && msg.type === 'voice') {
+              return (
+                <div key={msg.id} className="flex flex-col items-end gap-1 self-end max-w-[85%]">
+                  <div
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full text-white shadow-xs cursor-pointer hover:opacity-95 transition-opacity"
+                    style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)' }}
+                    onClick={() => addToast('Voice Clip', 'Playing user voice question...', 'info')}
                   >
-                    {msg.cta.label}
+                    {/* Simulated Voice Waveform Bars */}
+                    <div className="flex items-center gap-1 h-3.5">
+                      <span className="w-0.5 h-2 bg-white/70 rounded-full" />
+                      <span className="w-0.5 h-3.5 bg-white rounded-full" />
+                      <span className="w-0.5 h-1.5 bg-white/60 rounded-full" />
+                      <span className="w-0.5 h-3 bg-white rounded-full" />
+                      <span className="w-0.5 h-2 bg-white/80 rounded-full" />
+                      <span className="w-0.5 h-4 bg-white rounded-full" />
+                      <span className="w-0.5 h-2.5 bg-white/90 rounded-full" />
+                      <span className="w-0.5 h-1 bg-white/50 rounded-full" />
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-gray-400 pr-1">{msg.timestamp}</span>
+                </div>
+              );
+            }
+
+            // User Text Message
+            if (msg.role === 'user') {
+              return (
+                <div key={msg.id} className="flex flex-col items-end gap-1 self-end max-w-[85%]">
+                  <div
+                    className="px-4 py-2.5 rounded-2xl rounded-tr-xs text-white text-xs leading-relaxed shadow-xs"
+                    style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)' }}
+                  >
+                    {msg.text}
+                  </div>
+                  <span className="text-[11px] text-gray-400 pr-1">{msg.timestamp}</span>
+                </div>
+              );
+            }
+
+            // Navi Response Message Card
+            return (
+              <div key={msg.id} className="flex flex-col gap-2 self-start w-full max-w-[100%]">
+                {/* Gray Background Card */}
+                <div className="bg-[#F6F7F9] rounded-2xl p-4 text-xs text-gray-800 leading-relaxed border border-gray-100 shadow-2xs">
+                  {/* Message Paragraph Text */}
+                  <div className="text-[13px] text-gray-800 leading-relaxed font-normal whitespace-pre-wrap">
+                    {msg.text}
+                  </div>
+
+                  {/* Dark Code Box Container */}
+                  {msg.codeSnippet && (
+                    <div className="mt-3.5 rounded-xl overflow-hidden bg-[#1E1E1E] text-gray-200 border border-gray-800 shadow-inner">
+                      {/* Code Header Bar */}
+                      <div className="flex items-center justify-between px-3.5 py-2 bg-[#18181B] border-b border-gray-800">
+                        <span className="text-[10px] font-bold text-gray-400 tracking-wider">
+                          {msg.codeSnippet.language}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCode(msg.codeSnippet!.code, msg.id)}
+                          className="text-gray-400 hover:text-white p-1 rounded transition-colors cursor-pointer"
+                          title="Copy Code"
+                        >
+                          {copiedId === msg.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Code Content */}
+                      <pre className="p-3.5 text-[11px] font-mono leading-relaxed overflow-x-auto text-[#E2E8F0] select-text">
+                        <code>{msg.codeSnippet.code}</code>
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Primary CTA if attached */}
+                  {msg.cta && (
+                    <button
+                      type="button"
+                      onClick={msg.cta.onClick}
+                      className="mt-3.5 w-full px-4 py-2 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      <span>{msg.cta.label}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Footer under card: Timestamp on left, Thumbs on right */}
+                <div className="flex items-center justify-between px-1 text-xs text-gray-400">
+                  <span className="text-[11px]">{msg.timestamp}</span>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLike(msg.id, true)}
+                      className={`transition-colors cursor-pointer p-0.5 ${
+                        msg.liked === true ? 'text-[#8B5CF6]' : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                      title="Helpful"
+                    >
+                      <ThumbsUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLike(msg.id, false)}
+                      className={`transition-colors cursor-pointer p-0.5 ${
+                        msg.liked === false ? 'text-red-500' : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                      title="Not helpful"
+                    >
+                      <ThumbsDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Pending / Typing Bubble */}
+          {isTyping && (
+            <div className="self-start">
+              <div
+                className="px-3.5 py-2 rounded-full text-white flex items-center gap-1 shadow-2xs"
+                style={{ background: '#8B5CF6' }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* ================= BOTTOM INPUT SECTION ================= */}
+        <div className="p-4 bg-white border-t border-gray-100 shrink-0 flex flex-col gap-2">
+          {/* Rounded Input Container */}
+          <div className="border border-gray-200 rounded-2xl p-3 bg-white shadow-xs focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all flex flex-col gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value.slice(0, 150))}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  handleSendMessage(query);
+                }
+              }}
+              placeholder="Ask Navi anything about PayWay..."
+              className="w-full text-xs text-gray-800 placeholder-gray-400 outline-none bg-transparent"
+            />
+
+            {/* Input Action Bar */}
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center gap-2">
+                {query.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleSendMessage(query)}
+                    className="p-1 rounded-md text-[#8B5CF6] hover:bg-purple-50 transition-colors cursor-pointer"
+                    title="Send message"
+                  >
+                    <Send className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
-            </div>
-          ))}
-        </div>
 
-        {/* CONTEXTUAL TOPICS CHIPS */}
-        <div className="p-3 bg-white border-t border-gray-100 shrink-0 flex flex-col gap-1.5">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-            Suggested for this page:
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {contextualTopics.map((topic, i) => (
+              <div className="flex items-center gap-2.5">
+                {/* Character Counter */}
+                <span className="text-[11px] font-mono text-gray-400">
+                  {query.length}/150
+                </span>
+
+                {/* Voice Pill Button */}
+                <button
+                  type="button"
+                  onClick={handleToggleVoice}
+                  className={`flex items-center gap-1.5 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-xs transition-all cursor-pointer ${
+                    isRecordingVoice
+                      ? 'bg-red-500 animate-pulse'
+                      : 'bg-[#8B5CF6] hover:bg-[#7C3AED]'
+                  }`}
+                  title={isRecordingVoice ? 'Click to finish speaking' : 'Speak with Navi'}
+                >
+                  <div className="flex items-center gap-0.5">
+                    <span className="w-0.5 h-2 bg-white rounded-full" />
+                    <span className="w-0.5 h-3 bg-white rounded-full" />
+                    <span className="w-0.5 h-1.5 bg-white rounded-full" />
+                  </div>
+                  <span>{isRecordingVoice ? 'Listening...' : 'Voice'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Disclaimer */}
+          <p className="text-center text-[10px] text-gray-500">
+            Navi can make mistakes. Check our{' '}
+            <button
+              type="button"
+              onClick={() => setShowUsagePolicy(true)}
+              className="text-[#7C3AED] hover:underline font-medium cursor-pointer"
+            >
+              Navi's Usage Policy.
+            </button>
+          </p>
+        </div>
+      </div>
+
+      {/* Usage Policy Modal */}
+      {showUsagePolicy && (
+        <div
+          className="fixed inset-0 z-60 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setShowUsagePolicy(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 animate-in fade-in zoom-in-95"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                <span>Navi Usage Policy</span>
+                <sup className="text-xs text-[#8B5CF6]">⁺</sup>
+              </h3>
               <button
-                key={i}
-                onClick={() => handleAsk(topic.query)}
-                className="text-[11px] bg-purple-50 hover:bg-purple-100 text-purple-900 font-semibold px-3 py-1.5 rounded-full transition-colors border border-purple-200 cursor-pointer shadow-2xs"
+                type="button"
+                onClick={() => setShowUsagePolicy(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded"
               >
-                {topic.title}
+                <X className="w-4 h-4" />
               </button>
-            ))}
+            </div>
+            <div className="text-xs text-gray-600 space-y-2.5 leading-relaxed">
+              <p>
+                Navi is an AI-powered assistant built for the PayWay Sandbox Developer Portal. All sample codes, hash explanations, and API responses are for development testing.
+              </p>
+              <p>
+                Always verify parameter concatenation order and cryptographic secrets against your official merchant account documentation before deploying to production.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowUsagePolicy(false)}
+              className="mt-5 w-full py-2 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-xs font-semibold rounded-xl"
+            >
+              Got it
+            </button>
           </div>
         </div>
-
-        {/* INPUT FORM */}
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            handleAsk(query);
-          }}
-          className="p-4 bg-white border-t border-gray-200 flex items-center gap-2 shrink-0"
-        >
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Ask Navi about PayWay APIs, KHQR, or webhooks..."
-            className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 transition-colors"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2.5 rounded-xl font-bold text-xs text-white shadow-sm transition-opacity hover:opacity-95 cursor-pointer"
-            style={{ backgroundColor: '#7C3AED' }}
-          >
-            Send
-          </button>
-        </form>
-      </div>
+      )}
     </div>
   );
 };

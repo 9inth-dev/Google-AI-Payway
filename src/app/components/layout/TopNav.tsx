@@ -1,18 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSandbox } from '../../context/SandboxContext';
+import { ChevronDown, Settings, User } from 'lucide-react';
 
 function PayWayLogo() {
   return (
     <div className="flex items-center">
-      <span className="font-extrabold text-base leading-none" style={{ color: "#E8352A" }}>
+      <span className="font-extrabold text-base leading-none text-white tracking-tight" style={{ letterSpacing: '0.02em' }}>
         ABA
       </span>
-      <sup className="font-black ml-0.5 text-white" style={{ fontSize: 8 }}>
-        +
-      </sup>
       <span
-        className="font-extrabold italic text-white ml-1 tracking-wide"
-        style={{ fontSize: 17, letterSpacing: "0.03em" }}
+        className="font-extrabold italic text-[#00B4CC] ml-1 tracking-wide"
+        style={{ fontSize: 17, letterSpacing: '0.04em' }}
       >
         PAYWAY
       </span>
@@ -22,17 +20,66 @@ function PayWayLogo() {
 
 export const TopNav: React.FC = () => {
   const { setRoute, setShowAskNaviModal } = useSandbox();
+  const [merchantDropdownOpen, setMerchantDropdownOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   return (
     <header
-      className="flex items-center justify-between px-5 h-14 shrink-0 z-20"
-      style={{ backgroundColor: "#0D5C73" }}
+      className="flex items-center justify-between px-4 h-14 shrink-0 z-20"
+      style={{ backgroundColor: '#073340' }}
     >
+      {/* LEFT SECTION */}
       <div className="flex items-center gap-3">
+        {/* Merchant Selector Pill */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setMerchantDropdownOpen(prev => !prev)}
+            className="flex items-center gap-2 bg-[#052833] hover:bg-[#042029] border border-cyan-900/40 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+          >
+            {/* Merchant Circle Avatar */}
+            <div className="w-5 h-5 rounded-full bg-[#4A3E3D] border border-stone-600 flex items-center justify-center text-[9px] font-bold text-amber-200 uppercase tracking-tighter">
+              B
+            </div>
+            <span className="text-[13px] font-medium text-gray-200">Bodia Spa</span>
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+          </button>
+
+          {merchantDropdownOpen && (
+            <div className="absolute left-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95">
+              <div className="px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                Active Merchant
+              </div>
+              <button
+                type="button"
+                onClick={() => setMerchantDropdownOpen(false)}
+                className="w-full text-left px-3 py-2 text-xs font-semibold text-gray-800 bg-cyan-50/60 flex items-center gap-2"
+              >
+                <div className="w-4 h-4 rounded-full bg-[#4A3E3D] text-[8px] text-amber-200 flex items-center justify-center font-bold">
+                  B
+                </div>
+                <span>Bodia Spa (HQ)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMerchantDropdownOpen(false)}
+                className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+              >
+                <div className="w-4 h-4 rounded-full bg-slate-600 text-[8px] text-white flex items-center justify-center font-bold">
+                  B
+                </div>
+                <span>Bodia Siem Reap</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Hamburger Menu Toggle */}
         <button
+          type="button"
           onClick={() => setRoute('/home')}
-          className="text-white/70 hover:text-white transition-colors cursor-pointer"
-          title="Go to Home"
+          className="text-white/80 hover:text-white p-1 transition-colors cursor-pointer ml-1"
+          title="Toggle Navigation"
         >
           <svg width="18" height="14" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="0" y1="1" x2="18" y2="1" />
@@ -40,95 +87,90 @@ export const TopNav: React.FC = () => {
             <line x1="0" y1="13" x2="18" y2="13" />
           </svg>
         </button>
-        <button onClick={() => setRoute('/home')} className="text-left cursor-pointer">
+
+        {/* PayWay Logo */}
+        <button type="button" onClick={() => setRoute('/home')} className="text-left cursor-pointer pl-1">
           <PayWayLogo />
         </button>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Ask Navi Button */}
+      {/* RIGHT SECTION */}
+      <div className="flex items-center gap-3.5">
+        {/* Ask Navi Button matching exact screenshot */}
         <button
+          data-tour="topnav-ask-navi"
+          type="button"
           onClick={() => setShowAskNaviModal(true)}
-          className="flex items-center gap-2 text-white text-sm font-medium px-4 py-1.5 rounded-full shadow-sm hover:opacity-95 transition-opacity cursor-pointer"
-          style={{ background: "linear-gradient(135deg, #A855F7 0%, #7C3AED 100%)" }}
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-purple-500/30 text-white text-xs font-semibold cursor-pointer shadow-sm hover:opacity-95 transition-all group"
+          style={{
+            background: 'linear-gradient(135deg, #3B1B7D 0%, #2A105C 100%)',
+          }}
         >
-          <span style={{ fontSize: 13 }}>✦</span> Ask Navi
+          {/* Purple oval glow pill on left */}
+          <div className="w-4.5 h-2.5 rounded-full bg-[#A855F7] group-hover:bg-[#C084FC] transition-colors shadow-[0_0_8px_#A855F7]" />
+          <div className="flex items-center">
+            <span className="text-[13px] font-semibold text-purple-100">Ask Navi</span>
+            <sup className="text-[11px] font-black text-purple-300 ml-0.5 leading-none">⁺</sup>
+          </div>
         </button>
 
-        {/* Developer Settings Quick Action */}
+        {/* Settings Gear Quick Action */}
         <button
+          type="button"
           onClick={() => setRoute('/developer/settings')}
-          className="text-white/70 hover:text-white transition-colors cursor-pointer p-1.5 rounded-md hover:bg-white/10"
+          className="text-white/70 hover:text-white transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white/10"
           title="Developer Settings"
         >
-          <svg
-            width="18"
-            height="18"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            viewBox="0 0 24 24"
-          >
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-          </svg>
+          <Settings className="w-4 h-4" />
         </button>
 
-        {/* Profile Switcher & Dropdown */}
-        <div className="relative group">
-          <button className="flex items-center gap-2 text-white cursor-pointer hover:opacity-90 py-1">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-              style={{ backgroundColor: "#1A7A90" }}
-            >
-              <svg
-                width="15"
-                height="15"
-                fill="none"
-                stroke="white"
-                strokeWidth="1.8"
-                viewBox="0 0 24 24"
-              >
-                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
+        {/* Profile Switcher */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setProfileDropdownOpen(prev => !prev)}
+            className="flex items-center gap-2 text-white cursor-pointer hover:opacity-90 py-1"
+          >
+            <div className="w-7 h-7 rounded-full bg-[#00B4CC] flex items-center justify-center text-white shrink-0 shadow-xs">
+              <User className="w-4 h-4" />
             </div>
             <div className="text-xs leading-tight hidden sm:block text-left">
-              <div className="font-semibold">Olakunle Henry</div>
-              <div className="opacity-60 text-[10px]">Developer Sandbox</div>
+              <div className="font-semibold text-gray-100 text-[12px]">Monineath Heng</div>
+              <div className="text-gray-400 text-[10px] flex items-center gap-1">
+                <span>Admin</span>
+                <ChevronDown className="w-2.5 h-2.5" />
+              </div>
             </div>
-            <svg
-              width="12"
-              height="12"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              className="opacity-60 hidden sm:block"
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
           </button>
 
-          {/* Profile Dropdown Menu */}
-          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 hidden group-hover:block z-50">
-            <div className="px-3 py-2 border-b border-gray-100 text-xs">
-              <p className="font-semibold text-gray-800">Olakunle Henry</p>
-              <p className="text-[11px] text-gray-400 truncate">henry.dev@payway-merchant.com</p>
+          {profileDropdownOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95">
+              <div className="px-3 py-2 border-b border-gray-100 text-xs">
+                <p className="font-semibold text-gray-800">Monineath Heng</p>
+                <p className="text-[11px] text-gray-400 truncate">monineath.heng@bodia-spa.com</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setRoute('/developer/api-keys');
+                  setProfileDropdownOpen(false);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              >
+                API Credentials
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRoute('/login');
+                  setProfileDropdownOpen(false);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-50"
+              >
+                Sign Out
+              </button>
             </div>
-            <button
-              onClick={() => setRoute('/developer/api-keys')}
-              className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-            >
-              API Credentials
-            </button>
-            <button
-              onClick={() => setRoute('/login')}
-              className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-50"
-            >
-              Sign Out
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </header>

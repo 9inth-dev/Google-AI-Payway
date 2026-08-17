@@ -37,7 +37,7 @@ function WatermarkPattern() {
 }
 
 export const LoginPage: React.FC = () => {
-  const { setRoute, updateState } = useSandbox();
+  const { setRoute, updateState, state } = useSandbox();
   const [email, setEmail] = useState('henry.dev@payway-merchant.com');
   const [password, setPassword] = useState('sandbox123456');
   const [rememberMe, setRememberMe] = useState(true);
@@ -45,7 +45,11 @@ export const LoginPage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateState({ isLoggedIn: true });
-    setRoute('/account-created');
+    if (state.hasSeenSandboxWelcome) {
+      setRoute('/home');
+    } else {
+      setRoute('/account-created');
+    }
   };
 
   return (

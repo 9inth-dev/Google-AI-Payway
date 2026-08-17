@@ -1,10 +1,8 @@
 import React from 'react';
 import { useSandbox } from '../../context/SandboxContext';
-import { PROVISIONAL_CONFIG } from '../../config/provisionalConfig';
 
 export const ReviewFeedbackModal: React.FC = () => {
   const {
-    state,
     updateState,
     addToast,
     setRoute,
@@ -14,50 +12,22 @@ export const ReviewFeedbackModal: React.FC = () => {
 
   if (!showFeedbackModal) return null;
 
-  // Calculate days remaining strictly based on original provisionalStartDate
-  const getDaysRemaining = () => {
-    if (!state.provisionalStartDate) return PROVISIONAL_CONFIG.PROVISIONAL_PERIOD_DAYS;
-
-    const now = new Date();
-    const start = new Date(state.provisionalStartDate);
-    const diffTime = now.getTime() - start.getTime();
-    const elapsedDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, PROVISIONAL_CONFIG.PROVISIONAL_PERIOD_DAYS - elapsedDays);
-  };
-
-  const daysRemaining = getDaysRemaining();
-  const daysElapsed = Math.min(PROVISIONAL_CONFIG.PROVISIONAL_PERIOD_DAYS, PROVISIONAL_CONFIG.PROVISIONAL_PERIOD_DAYS - daysRemaining);
-
   const handleRouteToRequirement = (tab: string) => {
     setShowFeedbackModal(false);
     setRoute(`/integrations/qr-api?tab=${tab}`);
   };
 
   const handleResubmit = () => {
-    // HARD RULE:
-    // Resubmission MUST NEVER reactivate provisional production access if blocked!
-    // It only updates reviewStatus to 'resubmitted'.
-    // It maintains the original provisionalStartDate, productionApiKey, and usage limits.
-    const currentAccessStatus = state.productionAccessStatus;
-
     updateState({
       reviewStatus: 'resubmitted',
-      productionAccessStatus: currentAccessStatus,
+      productionAccessStatus: 'resubmitted',
     });
 
-    if (currentAccessStatus === 'provisional_expired' || currentAccessStatus === 'provisional_limit_reached') {
-      addToast(
-        'Application Resubmitted',
-        'Application resubmitted for review. Production key remains blocked until approval.',
-        'warning'
-      );
-    } else {
-      addToast(
-        'Application Resubmitted',
-        'Application resubmitted for review. You can continue accepting live payments while PayWay reviews your submission.',
-        'success'
-      );
-    }
+    addToast(
+      'Application Resubmitted',
+      'Your updated request has been sent back to PayWay for review. Reviews usually take 2 to 3 working days.',
+      'success'
+    );
 
     setShowFeedbackModal(false);
   };
@@ -85,30 +55,20 @@ export const ReviewFeedbackModal: React.FC = () => {
             Reviewer Requested Changes
           </h2>
           <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-            Your provisional production key remains active while you make these updates. Correcting these 2 items will allow PayWay to complete final approval.
+            PayWay reviewed your application and requested updates. Correcting these 2 items will allow PayWay to complete final approval and issue your production credentials.
           </p>
         </div>
 
         {/* MODAL BODY */}
         <div className="p-6 overflow-y-auto space-y-6">
           {/* NOTICE BANNER */}
-          {state.productionAccessStatus === 'provisional_expired' || state.productionAccessStatus === 'provisional_limit_reached' ? (
-            <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3">
-              <span className="text-rose-700 text-lg">🚫</span>
-              <div className="text-xs text-rose-900 leading-relaxed">
-                <strong className="font-bold text-rose-950 block mb-0.5">Key Blocked — Resubmission Disclaimer</strong>
-                Resubmitting your application will not restore provisional production access. Your production key <code className="bg-rose-100 text-rose-950 px-1 py-0.5 rounded font-mono font-bold text-[11px]">{state.productionApiKey || 'pk_live_mct_883921_a9f8b7c6d5'}</code> will remain blocked until your application is approved.
-              </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-amber-700 text-lg">ℹ️</span>
+            <div className="text-xs text-amber-900 leading-relaxed">
+              <strong className="font-bold text-amber-950 block mb-0.5">Sandbox Remains Fully Operational</strong>
+              You can continue testing and building in Sandbox while updating your submission details. Reviews usually take 2 to 3 working days after resubmission.
             </div>
-          ) : (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-              <span className="text-amber-700 text-lg">ℹ️</span>
-              <div className="text-xs text-amber-900 leading-relaxed">
-                <strong className="font-bold text-amber-950 block mb-0.5">Provisional Key Active During Changes</strong>
-                Your live key <code className="bg-amber-100 text-amber-950 px-1 py-0.5 rounded font-mono font-bold text-[11px]">{state.productionApiKey || 'pk_live_mct_883921_a9f8b7c6d5'}</code> is uninterrupted. You currently have <span className="font-bold text-amber-950">{daysRemaining} days remaining</span> in your provisional period.
-              </div>
-            </div>
-          )}
+          </div>
 
           {/* STRUCTURED COMMENTS */}
           <div className="space-y-4">
@@ -169,41 +129,6 @@ export const ReviewFeedbackModal: React.FC = () => {
                 </svg>
               </button>
             </div>
-          </div>
-
-          {/* TIMELINE / BUSINESS RULE EXPLANATION CARD */}
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                Provisional Lifecycle Rule Verification
-              </span>
-              <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
-                Key Preserved
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-              <div className="p-2 bg-white rounded-lg border border-gray-200">
-                <span className="block text-[10px] text-gray-400 font-semibold">First submission</span>
-                <span className="font-bold text-gray-800">Day 1</span>
-              </div>
-              <div className="p-2 bg-white rounded-lg border border-amber-200">
-                <span className="block text-[10px] text-amber-800 font-semibold">Changes requested</span>
-                <span className="font-bold text-amber-900">Day 12</span>
-              </div>
-              <div className="p-2 bg-white rounded-lg border border-cyan-200">
-                <span className="block text-[10px] text-cyan-800 font-semibold">Resubmission</span>
-                <span className="font-bold text-cyan-900">Day {daysElapsed || 16}</span>
-              </div>
-              <div className="p-2 bg-white rounded-lg border border-emerald-200">
-                <span className="block text-[10px] text-emerald-800 font-semibold">Remaining</span>
-                <span className="font-bold text-emerald-900">{daysRemaining} days</span>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-gray-500 italic text-center">
-              Resubmission maintains the original provisional start date ({state.provisionalStartDate ? new Date(state.provisionalStartDate).toLocaleDateString() : 'Initial Date'}), same production API key, and existing volume usage.
-            </p>
           </div>
         </div>
 

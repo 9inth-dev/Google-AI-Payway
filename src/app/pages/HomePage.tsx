@@ -1,34 +1,25 @@
 import React from 'react';
 import { useSandbox } from '../context/SandboxContext';
 import { CredentialCard } from '../components/common/CredentialCard';
-import { StatusBadge } from '../components/common/StatusBadge';
 import { getVerifiedRequirementsCount, isTechnicalTestingComplete, isUiEvidenceComplete } from '../utils/readiness';
-import { PROVISIONAL_CONFIG } from '../config/provisionalConfig';
-import { ReviewStatus } from '../types/sandbox';
 import { AttentionCard } from '../components/qr/AttentionCard';
 
 export const HomePage: React.FC = () => {
   const {
     state,
-    updateState,
     setRoute,
     setShowCreateTxModal,
-    setShowAskNaviModal,
     transactions,
     apiLogs,
     setSelectedActivityLogId,
   } = useSandbox();
 
-  const handleStartQrApi = () => {
-    updateState({
-      hasIntegration: true,
-      qrIntegrationStatus: 'testing',
-    });
-    setRoute('/integrations/qr-api');
-  };
+  const hasIntegration = !!state.hasCreatedFirstIntegration || !!state.hasIntegration;
+  const isFirstTime = !!state.firstTimeUser;
+  const displayLogs = isFirstTime ? [] : (apiLogs || []);
 
   const verifiedCount = getVerifiedRequirementsCount(state.productionReadiness);
-  const latestTx = transactions.length > 0 ? transactions[0] : null;
+  const latestTx = !isFirstTime && transactions && transactions.length > 0 ? transactions[0] : null;
 
   const developerTools = [
     {
@@ -81,7 +72,7 @@ export const HomePage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto">
+    <div className="flex flex-col gap-7 w-full pb-12">
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -94,9 +85,12 @@ export const HomePage: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION: DEVELOPER TOOLS */}
-      <div>
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+      {/* Attention Card (If changes requested by ABA PayWay review) */}
+      <AttentionCard className="mb-0" />
+
+      {/* ================= SECTION 1: DEVELOPER TOOLS ================= */}
+      <div data-tour="developer-tools">
+        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
           Developer Tools
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -104,7 +98,7 @@ export const HomePage: React.FC = () => {
             <button
               key={tool.title}
               onClick={tool.onClick}
-              className="bg-white rounded-lg border border-gray-100 shadow-sm p-4 text-left flex items-center gap-3.5 hover:shadow-md hover:border-cyan-100 transition-all cursor-pointer"
+              className="bg-white rounded-xl border border-gray-100 shadow-2xs p-4 text-left flex items-center gap-3.5 hover:shadow-md hover:border-cyan-100 transition-all cursor-pointer"
             >
               <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
@@ -121,68 +115,80 @@ export const HomePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Navi Recommendation Banner */}
-      <div className="bg-gradient-to-r from-cyan-50/60 to-teal-50/60 border border-cyan-100/80 rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#00B4CC] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
-            N
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-gray-800">
-              Not sure what you need? Ask Navi
-            </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">
-              Navi recommends payment products based on your platform, stack, and business model.
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowAskNaviModal(true)}
-          className="text-xs font-semibold text-[#00B4CC] hover:underline shrink-0 text-left sm:text-right cursor-pointer"
-        >
-          Get Navi Recommendation →
-        </button>
-      </div>
-
-      {/* SECTION: YOUR SANDBOX CREDENTIALS */}
-      <div>
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">
-          Your Sandbox
+      {/* ================= SECTION 2: SANDBOX CREDENTIALS ================= */}
+      <div data-tour="credentials">
+        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+          Sandbox Credentials
         </div>
         <CredentialCard
           title="Sandbox Credentials"
-          description="Use these test keys to authenticate your sandbox API requests."
+          description="Use these test keys to authenticate your Sandbox API requests."
           showMerchantId={true}
         />
       </div>
 
-      {/* ATTENTION CARD (When PayWay requests changes) */}
-      <AttentionCard className="mb-6" />
-
-      {/* SECTION: YOUR INTEGRATIONS (or Start an Integration) */}
-      {state.hasIntegration ? (
-        <div>
-          <div className="flex items-center justify-between mb-2.5">
-            <div>
-              <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider">
-                Your Integrations
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Active payment integrations configured in your PayWay sandbox.
-              </p>
-            </div>
-            <button
-              onClick={() => setRoute('/integrations')}
-              className="text-xs font-semibold hover:underline"
-              style={{ color: '#00B4CC' }}
-            >
-              Explore more products →
-            </button>
+      {/* ================= SECTION 3: YOUR PRODUCTS ================= */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Your Products
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              PayWay products configured in your Sandbox workspace.
+            </p>
           </div>
+          <button
+            onClick={() => setRoute('/integrations')}
+            className="text-xs font-semibold hover:underline cursor-pointer"
+            style={{ color: '#00B4CC' }}
+          >
+            Explore more integrations →
+          </button>
+        </div>
 
+        {!hasIntegration ? (
+          /* FIRST TIME EMPTY STATE */
+          <div className="bg-white rounded-xl border border-gray-100 shadow-2xs p-8 flex flex-col items-center justify-center text-center">
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center mb-3 text-[#00B4CC]"
+              style={{ backgroundColor: '#E6F8FA' }}
+            >
+              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                <polyline points="2 17 12 22 22 17" />
+                <polyline points="2 12 12 17 22 12" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-gray-800 mb-1">
+              No product integrations yet
+            </h3>
+            <p className="text-xs text-gray-500 max-w-md leading-relaxed mb-5">
+              Start your first PayWay product integration to begin building and testing in Sandbox.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <button
+                onClick={() => setRoute('/integrations')}
+                className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white shadow-sm transition-colors cursor-pointer"
+                style={{ backgroundColor: '#00B4CC' }}
+                onMouseEnter={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#0A9BB0')}
+                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#00B4CC')}
+              >
+                Start a product integration
+              </button>
+              <button
+                onClick={() => setRoute('/integrations')}
+                className="text-xs font-semibold text-gray-500 hover:text-gray-800 cursor-pointer px-3 py-2"
+              >
+                Explore integrations
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* EXISTING USER INTEGRATIONS LIST */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Active QR API Card */}
-            <div className="bg-white rounded-lg border border-cyan-200 shadow-sm p-5 flex flex-col justify-between hover:border-cyan-300 transition-all">
+            <div className="bg-white rounded-xl border border-cyan-200 shadow-2xs p-5 flex flex-col justify-between hover:border-cyan-300 transition-all">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -197,63 +203,60 @@ export const HomePage: React.FC = () => {
                     <div>
                       <h3 className="text-base font-bold text-gray-800">QR API</h3>
                       <span className="text-[11px] text-gray-500 font-medium">
-                        {state.productionAccessStatus === 'full_production'
-                          ? 'Live • Full Access'
-                          : state.productionAccessStatus === 'provisional_expired'
-                          ? 'Production access paused'
-                          : state.productionAccessStatus === 'provisional_limit_reached'
-                          ? 'Production access paused'
-                          : state.productionAccessStatus === 'provisional_active'
-                          ? (() => {
-                              if (!state.provisionalStartDate) return `${PROVISIONAL_CONFIG.PROVISIONAL_PERIOD_DAYS} days remaining`;
-                              const elapsedDays = Math.floor((Date.now() - new Date(state.provisionalStartDate).getTime()) / (1000 * 60 * 60 * 24));
-                              const remaining = Math.max(0, PROVISIONAL_CONFIG.PROVISIONAL_PERIOD_DAYS - elapsedDays);
-                              return `${remaining} days remaining`;
-                            })()
+                        {state.productionAccessStatus === 'full_production' || state.reviewStatus === 'approved'
+                          ? 'Live Production Access'
+                          : state.reviewStatus === 'submitted'
+                          ? 'Review Pending (2-3 days)'
+                          : state.reviewStatus === 'under_review'
+                          ? 'Under Active Review'
+                          : state.reviewStatus === 'changes_requested'
+                          ? 'Changes Requested'
+                          : state.reviewStatus === 'resubmitted'
+                          ? 'Resubmitted for Review'
                           : 'Sandbox Environment'}
                       </span>
                     </div>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 border ${
-                    state.productionAccessStatus === 'full_production'
+                    state.productionAccessStatus === 'full_production' || state.reviewStatus === 'approved'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : state.productionAccessStatus === 'provisional_expired' || state.productionAccessStatus === 'provisional_limit_reached'
-                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : state.productionAccessStatus === 'provisional_active'
+                      : state.reviewStatus === 'changes_requested'
+                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                      : state.reviewStatus === 'submitted' || state.reviewStatus === 'under_review' || state.reviewStatus === 'resubmitted'
                       ? 'bg-cyan-50 text-cyan-800 border-cyan-300'
                       : 'bg-gray-100 text-gray-700 border-gray-200'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${
-                      state.productionAccessStatus === 'full_production'
+                      state.productionAccessStatus === 'full_production' || state.reviewStatus === 'approved'
                         ? 'bg-emerald-500'
-                        : state.productionAccessStatus === 'provisional_expired' || state.productionAccessStatus === 'provisional_limit_reached'
-                        ? 'bg-rose-500'
-                        : state.productionAccessStatus === 'provisional_active'
+                        : state.reviewStatus === 'changes_requested'
+                        ? 'bg-amber-500'
+                        : state.reviewStatus === 'submitted' || state.reviewStatus === 'under_review' || state.reviewStatus === 'resubmitted'
                         ? 'bg-cyan-500 animate-pulse'
                         : 'bg-gray-400'
                     }`} />
-                    {state.productionAccessStatus === 'full_production'
+                    {state.productionAccessStatus === 'full_production' || state.reviewStatus === 'approved'
                       ? 'Approved'
-                      : state.productionAccessStatus === 'provisional_expired'
-                      ? 'Period Expired'
-                      : state.productionAccessStatus === 'provisional_limit_reached'
-                      ? 'Limit Reached'
-                      : state.productionAccessStatus === 'provisional_active'
-                      ? 'Provisional Active'
+                      : state.reviewStatus === 'changes_requested'
+                      ? 'Action Required'
+                      : state.reviewStatus === 'submitted'
+                      ? 'Submitted'
+                      : state.reviewStatus === 'under_review'
+                      ? 'Under Review'
+                      : state.reviewStatus === 'resubmitted'
+                      ? 'Resubmitted'
                       : 'Sandbox'}
                   </span>
                 </div>
 
-                {state.productionAccessStatus !== 'sandbox' || state.reviewStatus === 'approved' ? (
+                {state.productionAccessStatus !== 'sandbox' || state.reviewStatus !== 'none' ? (
                   <div className="grid grid-cols-2 gap-3 my-4 bg-gray-50/70 rounded-lg p-3 border border-gray-100 text-xs">
                     <div>
                       <span className="text-[10px] font-semibold text-gray-400 uppercase block">
-                        Transactions / Volume
+                        Review Timeline
                       </span>
                       <span className="font-bold text-gray-800 mt-0.5 block">
-                        {state.productionAccessStatus === 'full_production'
-                          ? 'No restrictions'
-                          : `${state.provisionalTransactionUsage || 0} of ${PROVISIONAL_CONFIG.MAX_PROVISIONAL_TRANSACTIONS}`}
+                        {state.reviewStatus === 'approved' ? 'Complete' : '2-3 Working Days'}
                       </span>
                     </div>
                     <div>
@@ -268,7 +271,7 @@ export const HomePage: React.FC = () => {
                             case 'changes_requested': return 'Changes Requested';
                             case 'resubmitted': return 'Resubmitted';
                             case 'approved': return 'Approved';
-                            default: return 'Approved';
+                            default: return 'In Review';
                           }
                         })()}
                       </span>
@@ -320,163 +323,52 @@ export const HomePage: React.FC = () => {
               <div className="pt-2 flex items-center justify-between border-t border-gray-50">
                 <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  {state.productionAccessStatus !== 'sandbox'
-                    ? 'Live Processing Active'
-                    : isTechnicalTestingComplete(state) && !isUiEvidenceComplete(state)
-                    ? 'Testing Complete'
+                  {state.reviewStatus === 'approved'
+                    ? 'Live Production Active'
+                    : state.reviewStatus !== 'none'
+                    ? 'Sandbox Testing Active'
                     : 'Integration Active'}
                 </span>
                 <button
-                  onClick={() => setRoute(state.productionAccessStatus !== 'sandbox' || isTechnicalTestingComplete(state) ? '/integrations/qr-api/production' : '/integrations/qr-api')}
+                  onClick={() => setRoute(state.reviewStatus !== 'none' || isTechnicalTestingComplete(state) ? '/integrations/qr-api/production' : '/integrations/qr-api')}
                   className="px-4 py-2 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer"
                   style={{ backgroundColor: '#00B4CC' }}
                   onMouseEnter={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#0A9BB0')}
                   onMouseLeave={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#00B4CC')}
                 >
-                  {state.productionAccessStatus !== 'sandbox'
-                    ? 'View production access'
+                  {state.reviewStatus !== 'none'
+                    ? 'View review status'
                     : isTechnicalTestingComplete(state)
                     ? 'Request production access →'
-                    : 'Open integration →'}
-                </button>
-              </div>
-            </div>
-
-            {/* Explore Next Product Card */}
-            <div className="bg-white rounded-lg border border-dashed border-gray-200 p-5 flex flex-col justify-between hover:border-gray-300 transition-all">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-gray-100 text-gray-600">
-                    Product
-                  </span>
-                  <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    Coming next
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-gray-800 mb-1">
-                  eCommerce Checkout
-                </h3>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  Accept cards, ABA PAY and KHQR payments seamlessly through PayWay hosted web checkout popups.
-                </p>
-              </div>
-              <div className="mt-5 pt-3 border-t border-gray-50 flex items-center justify-between">
-                <span className="text-[11px] text-gray-400">Hosted Payment Page</span>
-                <button
-                  onClick={() => setRoute('/integrations')}
-                  className="text-xs font-semibold text-[#00B4CC] hover:underline cursor-pointer"
-                >
-                  Explore all products →
+                    : 'Continue integration →'}
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div>
-          <div className="flex items-center justify-between mb-2.5">
-            <div>
-              <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider">
-                Start an Integration
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Choose a PayWay product or let Navi recommend the right integration for your stack.
-              </p>
-            </div>
-            <button
-              onClick={() => setRoute('/integrations')}
-              className="text-xs font-semibold hover:underline"
-              style={{ color: '#00B4CC' }}
-            >
-              View all products →
-            </button>
-          </div>
+        )}
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* QR API Card */}
-            <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-5 flex flex-col justify-between hover:border-cyan-200 transition-all">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-cyan-50 text-[#00B4CC] border border-cyan-100">
-                    API
-                  </span>
-                  <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    Available in Sandbox
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-gray-800 mb-1.5">
-                  QR API
-                </h3>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  Generate payment QR codes for customers to scan with ABA Mobile or other supported KHQR banking apps.
-                </p>
-              </div>
-              <div className="mt-5 pt-4 border-t border-gray-50 flex items-center justify-between">
-                <span className="text-[11px] text-gray-400">KHQR Standard Payment</span>
-                <button
-                  onClick={handleStartQrApi}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer"
-                  style={{ backgroundColor: '#00B4CC' }}
-                  onMouseEnter={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#0A9BB0')}
-                  onMouseLeave={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#00B4CC')}
-                >
-                  Start with QR API →
-                </button>
-              </div>
-            </div>
-
-            {/* eCommerce Checkout Card */}
-            <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-5 flex flex-col justify-between opacity-80">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-gray-100 text-gray-600 border border-gray-200">
-                    API
-                  </span>
-                  <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    Coming next
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-gray-800 mb-1.5">
-                  eCommerce Checkout
-                </h3>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  Accept card, ABA PAY and KHQR payments seamlessly through PayWay hosted web checkout popups.
-                </p>
-              </div>
-              <div className="mt-5 pt-4 border-t border-gray-50 flex items-center justify-between">
-                <span className="text-[11px] text-gray-400">Hosted Payment Page</span>
-                <button
-                  disabled
-                  className="px-4 py-2 rounded-lg text-xs font-semibold text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200"
-                >
-                  Coming Soon
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SECTION: RECENT API ACTIVITY */}
-      <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+      {/* ================= SECTION 4: RECENT API ACTIVITY ================= */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-2xs overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800">Recent API Activity</h2>
+            <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Recent API Activity</h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              Live sandbox request logs, payment triggers, and webhooks
+              Sandbox request logs, payments, and webhooks
             </p>
           </div>
-          <button
-            onClick={() => setRoute('/integrations/qr-api/activity')}
-            className="text-xs font-semibold hover:underline cursor-pointer"
-            style={{ color: '#00B4CC' }}
-          >
-            View full activity log →
-          </button>
+          {displayLogs && displayLogs.length > 0 && (
+            <button
+              onClick={() => setRoute('/integrations/qr-api/activity')}
+              className="text-xs font-semibold hover:underline cursor-pointer"
+              style={{ color: '#00B4CC' }}
+            >
+              View full activity log →
+            </button>
+          )}
         </div>
 
-        {apiLogs && apiLogs.length > 0 ? (
+        {displayLogs && displayLogs.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -489,7 +381,7 @@ export const HomePage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {apiLogs.slice(0, 5).map(log => (
+                {displayLogs.slice(0, 5).map(log => (
                   <tr
                     key={log.id}
                     onClick={() => {
@@ -543,17 +435,10 @@ export const HomePage: React.FC = () => {
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
             </div>
-            <h3 className="text-xs font-bold text-gray-700">No API activity yet</h3>
-            <p className="text-[11px] text-gray-400 mt-1 max-w-sm">
-              Your sandbox requests will appear here once you start integrating or run a test charge.
+            <h3 className="text-sm font-bold text-gray-800">No API activity yet</h3>
+            <p className="text-xs text-gray-500 mt-1 max-w-md leading-relaxed">
+              Your Sandbox requests, payments and webhooks will appear here once you start integrating.
             </p>
-            <button
-              onClick={() => setRoute('/integrations/qr-api/testing')}
-              className="mt-4 px-3.5 py-2 text-xs font-semibold rounded-lg text-white transition-opacity hover:opacity-95 cursor-pointer"
-              style={{ backgroundColor: '#00B4CC' }}
-            >
-              Run Integration Simulator
-            </button>
           </div>
         )}
       </div>
